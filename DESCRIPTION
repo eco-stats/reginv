@@ -1,0 +1,20 @@
+Package: reginv
+Type: Package
+Title: Regression Inversion for Parametric Inference
+Version: 0.1.1
+Authors@R: c(
+    person("David", "Warton", email = "david.warton@unsw.edu.au", role = c("cre", "aut")),
+    person("Victor", "Tsang", email = "victorwctsang@gmail.com", role = c("aut")))
+Description: Tools for parametric inference using regression inversion, which can construct exact confidence intervals for a parameter, given a simulation model and a test statistic.
+    The main application (at this point) is estimating extinction time from a set of fossil ages, together with measurement error standard deviations, and an a priori endpoint for the interval over which fossil data are available. Recovery potential is assumed to be constant over the interval, and uncertainty estimating fossil ages is assumed to be independent across specimens and normally distributed. Inversion of the maximum likelihood estimator is used to find and exact confidence interval for extinction time, under the above assumptions.
+    This package can also be used to estimate either endpoint of stratigraphic data (assuming the other is known), that is, it could also be used to estiamte invasion or speciation times, see `reginv_fossil` help file for details.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports:
+    stats,
+    quantreg
+RoxygenNote: 7.2.3
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
