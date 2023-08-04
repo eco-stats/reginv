@@ -37,11 +37,11 @@ reginv = function(data, getT, simulateData, thetaInits, q=0.5, iterMax=1000, eps
   # get initial stats
   if(is.null(stats))
   {
-    stats=data.frame(theta=NULL,T=NULL,thetaEst=NULL, wt=NULL)
+    stats=data.frame(theta=NULL,T=NULL,thetaEst=NULL)
     for(i in 1:length(thetaInits) )
     {
       newDat = simulateData(thetaInits[i], ...)
-      stats = rbind(stats, c(theta=thetaInits[i], T = getT(newDat, ...), thetaEst=thetaInits[i], wt=NA) )
+      stats = rbind(stats, c(theta=thetaInits[i], T = getT(newDat, ...), thetaEst=thetaInits[i]) )
     }      
     names(stats)=c("theta","T","thetaEst")
   }
@@ -105,7 +105,7 @@ reginv = function(data, getT, simulateData, thetaInits, q=0.5, iterMax=1000, eps
       newDat = simulateData(thetaNew, ...)
       Titer = getT(newDat, ...)
     }
-    stats = rbind(stats, c(theta=thetaNew, T=Titer, thetaEst=res$theta, wt=NA) )
+    stats = rbind(stats, c(theta=thetaNew, T=Titer, thetaEst=res$theta) )
     res = updateTheta(stats, t_obs, q, qfit=res$qfit, method=method, getPred=getPred)
     err = getErr(res$theta,res$qfit,t_obs,q) / abs(res$theta)
     isConverged = err < eps
@@ -116,6 +116,7 @@ reginv = function(data, getT, simulateData, thetaInits, q=0.5, iterMax=1000, eps
 updateTheta = function(stats,t_obs,q,qfit=NULL,method="rq",getPred=getPred,screenStats=NULL)
   # dat is a dataframe containing theta and T (parameter and statistic)
 {
+  stats$wt = NA #to avoid error in CRAN build
   if(method=="wrq")
   {
     lm_ft = lm(T~theta,data=stats)

@@ -45,9 +45,9 @@ reginv_fossil = function(ages, sd, K, alpha, q=c(alpha/2,0.5,1-alpha/2), thetaIn
 #' sd = runif(20, 50, 100)
 #'
 #' # for a point estimate plus 95% CI
-#' reginv_fossil(ages=ages, sd=sd, K=22000, alpha=0.05) 
+#' reginv_fossil(ages=ages, sd=sd, K=25000, alpha=0.05) 
 
-reginv_fossil = function(ages, sd, K, alpha, q=c(alpha/2,0.5,1-alpha/2), thetaInits=NULL, iterMax=500, method="rq")
+reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), thetaInits=NULL, iterMax=500, method="rq")
 {  
   # get thetaInits, if not provided
   if(is.null(thetaInits))
@@ -83,7 +83,7 @@ simFn_fossil = function (theta, K, eps.sigma, n=length(eps.sigma))
   if(theta>K) #trying to game it to push estimates away from K 
     W=rep(theta,n)
   else
-    W = rUNmod(theta, K, eps.sigma, n=length(eps.sigma))
+    W = rUNmod(theta, K, eps.sigma, n=n)
   return(W)
 }
 
@@ -92,58 +92,60 @@ rUNmod = function(theta, K, eps.sigma, n=length(eps.sigma), tol=sqrt(.Machine$do
 {
   #ensure sds is the right length
   nSD = length(eps.sigma)
+  if(nSD==1)
+  {
+    eps.sigma = rep(eps.sigma,length=n)
+    nSD = n #to avoid below warning for scalar eps
+  }
   if(nSD!=n)
   {
     eps.sigma = rep(eps.sigma,length=n)
     warning("length of 'eps.sigma' is not equal to 'n' so will extend 'eps.sigma' as needed.")
   }
-  if(nSD==1)  eps.sigma = rep(eps.sigma,length=n)
   
   # compute C and u
   F.K = pnorm(K - theta, mean = 0, sd = eps.sigma)
   f.K = dnorm(K - theta, mean = 0, sd = eps.sigma)
   C = (K-theta) * F.K + eps.sigma^2 * f.K
   u = runif(n)
-  uOnC = u * C
+  uTimesC = u * C
   
-  # now get cracking finding eps
-  epsOld = qnorm(u,mean=0,sd=eps.sigma) # starting estimate
-  eps = quantU = rep(0,n) 
-  quantUMax = pnorm(K-theta,sd=eps.sigma) # quantU can't get any larger than this or eps will be larger than K-theta
+  # now get cracking finding w
+  wOld = theta + u*(K-theta) # starting estimate
+  w = F.w = f.w = rep(0,n) 
   iter=0
   isDiff = eps.sigma!=0 #only do the below when eps.sigma is non-zero
   while(any(isDiff) & iter<nIter)
   {
-    quantU[isDiff] = ( uOnC[isDiff] - eps.sigma[isDiff]^2*dnorm(epsOld[isDiff], mean = 0, sd = eps.sigma[isDiff]) ) / (K-theta)
-    quantU[isDiff] = pmax(quantU[isDiff], sqrt(tol)) # correction for wild estimates sending quantU negative
-    quantU[isDiff] = pmin(quantU[isDiff], quantUMax[isDiff]-sqrt(tol)) # correction for wild estimates sending eps over K-theta
-    eps[isDiff]    = qnorm(quantU[isDiff], mean=0, sd=eps.sigma[isDiff])
-    epsDiff        = abs(eps-epsOld)
-    isDiff         = epsDiff>tol
-    epsOld[isDiff] = eps[isDiff]
-    iter           = iter+1
+    F.w[isDiff]  = pnorm(wOld[isDiff]-theta, mean = 0, sd = eps.sigma[isDiff])
+    f.w[isDiff]  = dnorm(wOld[isDiff]-theta, mean = 0, sd = eps.sigma[isDiff])
+    w[isDiff]    = theta + ( uTimesC[isDiff] - eps.sigma[isDiff]^2 * f.w[isDiff] ) / F.w[isDiff]
+    w[isDiff]    = pmin(w[isDiff],K) #ensure it is less than K
+    wDiff        = abs(w-wOld)
+    isDiff       = wDiff>tol
+    wOld[isDiff] = w[isDiff]
+    iter         = iter+1
   }
   
+  # in the occasional odd case this might not converge, in which case try using uniroot on cdf function pUNmod
   if(iter==nIter)
   {
     for(iObs in which(isDiff))
     {
-      epsTry = try( uniroot( pUNmodEps, interval=c(qnorm(sqrt(tol),mean=0,sd=eps.sigma[iObs]),K-theta),u=u[iObs],theta=theta,tol=tol,n=1,eps.sigma=eps.sigma[iObs],K=K,extendInt="upX") )
-      if(inherits(epsTry,"try-error")==FALSE)
+      wTry = try( uniroot( pUNmod, interval=c(qnorm(sqrt(tol),mean=0,sd=eps.sigma[iObs]),K-theta),tol=tol,n=1,theta=theta,eps.sigma=eps.sigma[iObs],K=K,u=u[iObs],extendInt="upX") )
+      if(inherits(wTry,"try-error")==FALSE)
       {
-        eps[iObs] = epsTry$root
+        w[iObs] = wTry$root
         isDiff[iObs] = FALSE
       }
     }
     if(any(isDiff)) warning(paste0("non-convergence for ",sum(isDiff)," observations"))
   }
-  X = runif(n,min=theta,max=K-eps)
-  W = X + eps
-  return(W)
+  return(w)
 }
 
-pUNmodEps = function(eps,u,theta,K,eps.sigma,n=length(eps.sigma),tol=sqrt(.Machine$double.eps))
-  # function to compute marginal cdf of epsilon, minus u, to solve for eps
+pUNmod = function(w,theta,K,eps.sigma,n=length(eps.sigma),u=0)
+# function to compute marginal cdf of epsilon, minus u, to solve for eps
 {
   # get CDF denominator
   F.K    = pnorm(K - theta, mean = 0, sd = eps.sigma)
@@ -151,9 +153,9 @@ pUNmodEps = function(eps,u,theta,K,eps.sigma,n=length(eps.sigma),tol=sqrt(.Machi
   C      = (K-theta) * F.K + eps.sigma^2 * f.K
   
   # get CDF-u
-  F.eps  = pnorm(eps, mean = 0, sd = eps.sigma)
-  f.eps  = dnorm(eps, mean = 0, sd = eps.sigma)
-  cdfEps = ( (K-theta)*F.eps + eps.sigma^2*f.eps ) / C - u
+  F.w  = pnorm(w-theta, mean = 0, sd = eps.sigma)
+  f.w  = dnorm(w-theta, mean = 0, sd = eps.sigma)
+  cdfEps = ( (w-theta) * F.w + eps.sigma^2 * f.w ) / C - u
   return(cdfEps)
 }
 
