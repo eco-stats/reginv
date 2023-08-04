@@ -8,9 +8,9 @@ reginv_fossil(
   ages,
   sd,
   K,
-  alpha,
+  alpha = 0.05,
   q = c(alpha/2, 0.5, 1 - alpha/2),
-  thetaInits = NULL,
+  paramInits = NULL,
   iterMax = 500,
   method = "rq"
 )
@@ -28,7 +28,7 @@ close to the age of the oldest fossil.}
 \item{q}{Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,0.5,1-alpha/2)},
 which gives the limits of a 100(1-\code{alpha})\% confidence interval and a point estimate obtained by solving at 0.5. If \code{q} is specified it overrides any input for \code{alpha}.}
 
-\item{thetaInits}{A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 20 values evenly distributed within 5 SEs of the MLE.}
+\item{paramInits}{A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 20 values evenly distributed within 5 SEs of the MLE.}
 
 \item{iterMax}{Maximum number of simulated datasets to use to estimate extinction time (default 500).}
 
@@ -69,5 +69,5 @@ ages = runif(20, 10000, 25000) #simulating some random data
 sd = runif(20, 50, 100)
 
 # for a point estimate plus 95\% CI
-reginv_fossil(ages=ages, sd=sd, K=22000, alpha=0.05) 
+reginv_fossil(ages=ages, sd=sd, K=25000, alpha=0.05) 
 }

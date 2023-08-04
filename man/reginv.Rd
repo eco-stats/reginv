@@ -8,8 +8,8 @@ reginv(
   data,
   getT,
   simulateData,
-  thetaInits,
   q = 0.5,
+  paramInits,
   iterMax = 1000,
   eps = 1e-05,
   method = "rq",
@@ -25,9 +25,9 @@ reginv(
 
 \item{simulateData}{A function to simulate data from the assumed model, as a function of the target parameter \code{theta} and any additional arguments listed in \code{...}.}
 
-\item{thetaInits}{A vector of initial values of \code{theta} to try. Must have at least two unique values in it, but this algorithm is more stable if you give it a dozen or so.}
-
 \item{q}{A scalar value between 0 and 1 specifying the quantile at which we want to solve for \code{theta}. Defaults to \code{0.5}}
+
+\item{paramInits}{A vector of initial values of \code{theta} to try. Must have at least two unique values in it, but this algorithm is more stable if you give it a dozen or so.}
 
 \item{iterMax}{Maximum number of values of \code{theta} to generate new test statistics at.}
 
@@ -59,4 +59,18 @@ and a function to compute a test statistic, given a sample of data.
 How well this works depends how well-chosen \code{getT} is (a maximum likelihood estimator, if available, is a great choice).
 If there are nuisance parameters, their estimates could be passed as additional arguments (\code{...}) but a better approach is to write a function that can estimate these from \code{data} at any given input value of \code{theta}.
 Then this function is called inside \code{simFn}, which in effect makes the simulation model a function of \code{theta} only.
+}
+\examples{
+# Find the lower 2.5\% confidence bound on the variance for a
+# mean-zero Gaussian sample, using mean of squared observations as statistic
+
+dat = rnorm(20, mean=0, sd=1) #simulating some random data
+meanSq = function(x,n){sum(x^2)/n}
+simNorm = function(x,n){rnorm(n,mean=0,sd=sqrt(x))}
+
+reginv(dat, getT=meanSq, simulateData=simNorm, q=0.025, 
+       paramInits=seq(0.5,2,length=20), n=length(dat))
+       
+# Compare to the exact value:
+print( sum(dat^2)/qchisq(0.975,20) )
 }

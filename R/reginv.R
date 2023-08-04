@@ -2,11 +2,10 @@
 #'
 #' Estimates a confidence interval for a parameter using regression inversion, given a model to simulate data from (as a function of this parameter)
 #' and a function to compute a test statistic, given a sample of data.
-reginv = function(data, getT, simulateData, thetaInits, q=0.5, iterMax=1000, eps=1.e-5, method="rq", a=0, stats = NULL, ...)
 #' @param data Dataset we want to use for inference 
 #' @param getT A function to compute the statistic that will be used for inversion, as a function of \code{data}, the target parameter \code{theta}, and any additional arguments listed in \code{...}.
 #' @param simulateData A function to simulate data from the assumed model, as a function of the target parameter \code{theta} and any additional arguments listed in \code{...}.
-#' @param thetaInits A vector of initial values of \code{theta} to try. Must have at least two unique values in it, but this algorithm is more stable if you give it a dozen or so.
+#' @param paramInits A vector of initial values of \code{theta} to try. Must have at least two unique values in it, but this algorithm is more stable if you give it a dozen or so.
 #' @param q A scalar value between 0 and 1 specifying the quantile at which we want to solve for \code{theta}. Defaults to \code{0.5}
 #' @param iterMax Maximum number of values of \code{theta} to generate new test statistics at.
 #' @param eps Convergence tolerance for \code{theta}, defaults to \code{1.e-5}.
@@ -27,10 +26,24 @@ reginv = function(data, getT, simulateData, thetaInits, q=0.5, iterMax=1000, eps
 #'  \item{B}{ a vector containing the number of Monte Carlo samples used to estimate each \code{theta}.}
 #'  \item{q}{ the quantile used in estimation.}
 #'  \item{call }{ the function call}
+#' @examples
+#' # Find the lower 2.5% confidence bound on the variance for a
+#' # mean-zero Gaussian sample, using mean of squared observations as statistic
+#' 
+#' dat = rnorm(20, mean=0, sd=1) #simulating some random data
+#' meanSq = function(x,n){sum(x^2)/n}
+#' simNorm = function(x,n){rnorm(n,mean=0,sd=sqrt(x))}
+#' 
+#' reginv(dat, getT=meanSq, simulateData=simNorm, q=0.025, 
+#'        paramInits=seq(0.5,2,length=20), n=length(dat))
+#'        
+#' # Compare to the exact value:
+#' print( sum(dat^2)/qchisq(0.975,20) )
+
 #' @export
 #' @import stats
 #' @importFrom quantreg rq
-reginv = function(data, getT, simulateData, thetaInits, q=0.5, iterMax=1000, eps=1.e-5, method="rq", a=0, stats = NULL, ...)
+reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps=1.e-5, method="rq", a=0, stats = NULL, ...)
 {
   t_obs = getT(data, ...)
   
@@ -38,10 +51,10 @@ reginv = function(data, getT, simulateData, thetaInits, q=0.5, iterMax=1000, eps
   if(is.null(stats))
   {
     stats=data.frame(theta=NULL,T=NULL,thetaEst=NULL)
-    for(i in 1:length(thetaInits) )
+    for(i in 1:length(paramInits) )
     {
-      newDat = simulateData(thetaInits[i], ...)
-      stats = rbind(stats, c(theta=thetaInits[i], T = getT(newDat, ...), thetaEst=thetaInits[i]) )
+      newDat = simulateData(paramInits[i], ...)
+      stats = rbind(stats, c(theta=paramInits[i], T = getT(newDat, ...), thetaEst=paramInits[i]) )
     }      
     names(stats)=c("theta","T","thetaEst")
   }
@@ -110,18 +123,22 @@ reginv = function(data, getT, simulateData, thetaInits, q=0.5, iterMax=1000, eps
     err = getErr(res$theta,res$qfit,t_obs,q) / abs(res$theta)
     isConverged = err < eps
   }
-  return(list(theta=res$theta,error=err,iter=iter,converged=isConverged,stats=stats,fit=res$qfit))
+  result = list(theta=res$theta,error=err,iter=iter,converged=isConverged,stats=stats,fit=res$qfit,call=match.call())
+  names(result$theta)=paste0("q=",q)
+  class(result)="reginv"
+  return(result)
 }
 
 updateTheta = function(stats,t_obs,q,qfit=NULL,method="rq",getPred=getPred,screenStats=NULL)
   # dat is a dataframe containing theta and T (parameter and statistic)
 {
-  stats$wt = NA #to avoid error in CRAN build
   if(method=="wrq")
   {
+    stats$wt = NA
     lm_ft = lm(T~theta,data=stats)
     infl = influence(lm_ft)$hat
     stats$wt[is.na(stats$T)==FALSE] = min(infl,2/length(stats$theta)) / infl
+    wt=stats$wt # to avoid weird CRAN error
   }
   
   if(is.null(qfit))

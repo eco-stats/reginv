@@ -4,7 +4,6 @@
 #' are plausible considering the maximum likleihood estimator of the most recently observed fossil, accounting for sampling error (the fact that
 #' the most recent fossil date is not necessarily the most recent time that the species was extant) and measurement error (error dating fossils).
 #'
-reginv_fossil = function(ages, sd, K, alpha, q=c(alpha/2,0.5,1-alpha/2), thetaInits=NULL, iterMax=500, method="rq")
 #' @param ages Numeric vector of fossil ages, with smaller values being more recent fossil ages.
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
@@ -12,7 +11,7 @@ reginv_fossil = function(ages, sd, K, alpha, q=c(alpha/2,0.5,1-alpha/2), thetaIn
 #' @param alpha Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals)
 #' @param q Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,0.5,1-alpha/2)},
 #' which gives the limits of a 100(1-\code{alpha})\% confidence interval and a point estimate obtained by solving at 0.5. If \code{q} is specified it overrides any input for \code{alpha}.
-#' @param thetaInits A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 20 values evenly distributed within 5 SEs of the MLE.
+#' @param paramInits A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 20 values evenly distributed within 5 SEs of the MLE.
 #' @param iterMax Maximum number of simulated datasets to use to estimate extinction time (default 500).
 #' @param method Regression method to use in estimating how MLE quantiles vary with extinction time, using a dataset of simulated MLEs and the extinction times at which they were simulated.
 #'  \code{method='rq'} (default) uses linear quantile regression, \code{method='rq2'} uses quadratic quantile regression, \code{method='wrq'} uses linear quantile regression but down-weighting 
@@ -47,14 +46,14 @@ reginv_fossil = function(ages, sd, K, alpha, q=c(alpha/2,0.5,1-alpha/2), thetaIn
 #' # for a point estimate plus 95% CI
 #' reginv_fossil(ages=ages, sd=sd, K=25000, alpha=0.05) 
 
-reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), thetaInits=NULL, iterMax=500, method="rq")
+reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
 {  
-  # get thetaInits, if not provided
-  if(is.null(thetaInits))
+  # get paramInits, if not provided
+  if(is.null(paramInits))
   {
     ft.mle = getThetaMLE(ages=ages, theta=min(ages), eps.sigma=sd, K=K)
     stepSize = max(1/sqrt(-ft.mle$hessian), IQR(ages)*0.1, na.rm=TRUE)
-    thetaInits = ft.mle$par + stepSize*seq(-5,5,length=20)
+    paramInits = ft.mle$par + stepSize*seq(-5,5,length=20)
   }
   
   # set up result list.
@@ -67,8 +66,8 @@ reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), th
   n <- length(ages)
   result=list(theta=theta,q=q)
   for (iQ in 1:length(q)) {
-    result$theta[[iQ]] = reginv(ages,getT=getThMLE,simulateData=simFn_fossil,thetaInits=thetaInits,
-                        q=q[iQ],iterMax=iterMax,K=K,eps.sigma=sd, method=method)$theta
+    result$theta[[iQ]] = reginv(ages,getT=getThMLE,simulateData=simFn_fossil,paramInits=paramInits,
+                        q=q[iQ],iterMax=iterMax,K=K,eps.sigma=sd, n=n, method=method)$theta
   }
   result$call <- match.call()
   class(result)="reginv"
@@ -111,8 +110,8 @@ rUNmod = function(theta, K, eps.sigma, n=length(eps.sigma), tol=sqrt(.Machine$do
   uTimesC = u * C
   
   # now get cracking finding w
-  wOld = theta + u*(K-theta) # starting estimate
-  w = F.w = f.w = rep(0,n) 
+  w = wOld = theta + u*(K-theta) # starting estimate
+  F.w = f.w = rep(0,n) 
   iter=0
   isDiff = eps.sigma!=0 #only do the below when eps.sigma is non-zero
   while(any(isDiff) & iter<nIter)
@@ -159,7 +158,7 @@ pUNmod = function(w,theta,K,eps.sigma,n=length(eps.sigma),u=0)
   return(cdfEps)
 }
 
-getThMLE = function (ages, theta=NULL, K, eps.sigma )
+getThMLE = function (ages, theta=NULL, K, eps.sigma, n=length(ages) )
 {
   if(is.null(theta))  theta=min(ages)
   if(all(ages>K))
