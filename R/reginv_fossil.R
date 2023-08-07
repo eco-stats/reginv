@@ -56,9 +56,9 @@ reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), pa
   # get paramInits, if not provided
   if(is.null(paramInits))
   {
-    ft.mle = mle_fossil(ages=ages, theta=min(ages), sd=sd, K=K)
-    stepSize = max(1/sqrt(-ft.mle$hessian), IQR(ages)*0.1, na.rm=TRUE)
-    paramInits = ft.mle$par + stepSize*seq(-5,5,length=20)
+    ft.mle = mle_fossil(ages=ages, sd=sd, K=K, alpha=NULL)
+    stepSize = max(ft.mle$se, IQR(ages)*0.1, na.rm=TRUE)
+    paramInits = ft.mle$theta + stepSize*seq(-5,5,length=20)
   }
   
   # set up result list.
