@@ -1,8 +1,9 @@
 #' Confidence Interval for Extinction Time using regression inversion
 #'
 #' Estimates a confidence interval for extinction time using regression inversion, which finds a range of values for extinction time that
-#' are plausible considering the maximum likleihood estimator of the most recently observed fossil, accounting for sampling error (the fact that
+#' are plausible considering the maximum likelihood estimator of the most recently observed fossil, accounting for sampling error (the fact that
 #' the most recent fossil date is not necessarily the most recent time that the species was extant) and measurement error (error dating fossils).
+#' Usually takes a few seconds to run, because it is doing a lot of computation behind the scenes. 
 #'
 #' @param ages Numeric vector of fossil ages, with smaller values being more recent fossil ages.
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
@@ -40,18 +41,22 @@
 #'  \item{call }{ the function call}
 #' @export
 #' @examples
-#' ages = runif(20, 10000, 25000) #simulating some random data
-#' sd = runif(20, 50, 100)
-#'
-#' # for a point estimate plus 95% CI
-#' reginv_fossil(ages=ages, sd=sd, K=25000, alpha=0.05) 
+#' ages = rfossil(20, 10000, K=25000, sd=1000) #simulating some random data
+#' 
+#' # for a point estimate together with a 95% CI
+#' reginv_fossil(ages=ages, sd=1000, K=25000, alpha=0.05) 
+#' 
+#' # compare to estimates using asymptotic likelihood inference, which tend to
+#' # be narrower and have poorer coverage (they miss the true value too often
+#' # when n or sd is small):
+#' mle_fossil(ages=ages, sd=1000, K=25000, alpha=0.05) 
 
 reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
 {  
   # get paramInits, if not provided
   if(is.null(paramInits))
   {
-    ft.mle = getThetaMLE(ages=ages, theta=min(ages), eps.sigma=sd, K=K)
+    ft.mle = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K)
     stepSize = max(1/sqrt(-ft.mle$hessian), IQR(ages)*0.1, na.rm=TRUE)
     paramInits = ft.mle$par + stepSize*seq(-5,5,length=20)
   }
@@ -67,123 +72,28 @@ reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), pa
   result=list(theta=theta,q=q)
   for (iQ in 1:length(q)) {
     result$theta[[iQ]] = reginv(ages,getT=getThMLE,simulateData=simFn_fossil,paramInits=paramInits,
-                        q=q[iQ],iterMax=iterMax,K=K,eps.sigma=sd, n=n, method=method)$theta
+                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, n=n, method=method)$theta
   }
   result$call <- match.call()
   class(result)="reginv"
   return(result)
 }
 
-simFn_fossil = function (theta, K, eps.sigma, n=length(eps.sigma))
+simFn_fossil = function (theta, K, sd, n=length(sd))
 {
-  # Simulate fossils assuming:
-  # - Gaussian measurement error (truncated at K-theta)
-  # - Uniform deposition from theta to K-eps
   if(theta>K) #trying to game it to push estimates away from K 
-    W=rep(theta,n)
+    W = rep(theta,n)
   else
-    W = rUNmod(theta, K, eps.sigma, n=n)
+    W = rfossil(theta, K, sd, n=n)
   return(W)
 }
 
-
-rUNmod = function(theta, K, eps.sigma, n=length(eps.sigma), tol=sqrt(.Machine$double.eps), nIter=50)
-{
-  #ensure sds is the right length
-  nSD = length(eps.sigma)
-  if(nSD==1)
-  {
-    eps.sigma = rep(eps.sigma,length=n)
-    nSD = n #to avoid below warning for scalar eps
-  }
-  if(nSD!=n)
-  {
-    eps.sigma = rep(eps.sigma,length=n)
-    warning("length of 'eps.sigma' is not equal to 'n' so will extend 'eps.sigma' as needed.")
-  }
-  
-  # compute C and u
-  F.K = pnorm(K - theta, mean = 0, sd = eps.sigma)
-  f.K = dnorm(K - theta, mean = 0, sd = eps.sigma)
-  C = (K-theta) * F.K + eps.sigma^2 * f.K
-  u = runif(n)
-  uTimesC = u * C
-  
-  # now get cracking finding w
-  w = wOld = theta + u*(K-theta) # starting estimate
-  F.w = f.w = rep(0,n) 
-  iter=0
-  isDiff = eps.sigma!=0 #only do the below when eps.sigma is non-zero
-  while(any(isDiff) & iter<nIter)
-  {
-    F.w[isDiff]  = pnorm(wOld[isDiff]-theta, mean = 0, sd = eps.sigma[isDiff])
-    f.w[isDiff]  = dnorm(wOld[isDiff]-theta, mean = 0, sd = eps.sigma[isDiff])
-    w[isDiff]    = theta + ( uTimesC[isDiff] - eps.sigma[isDiff]^2 * f.w[isDiff] ) / F.w[isDiff]
-    w[isDiff]    = pmin(w[isDiff],K) #ensure it is less than K
-    wDiff        = abs(w-wOld)
-    isDiff       = wDiff>tol
-    wOld[isDiff] = w[isDiff]
-    iter         = iter+1
-  }
-  
-  # in the occasional odd case this might not converge, in which case try using uniroot on cdf function pUNmod
-  if(iter==nIter)
-  {
-    for(iObs in which(isDiff))
-    {
-      wTry = try( uniroot( pUNmod, interval=c(qnorm(sqrt(tol),mean=0,sd=eps.sigma[iObs]),K-theta),tol=tol,n=1,theta=theta,eps.sigma=eps.sigma[iObs],K=K,u=u[iObs],extendInt="upX") )
-      if(inherits(wTry,"try-error")==FALSE)
-      {
-        w[iObs] = wTry$root
-        isDiff[iObs] = FALSE
-      }
-    }
-    if(any(isDiff)) warning(paste0("non-convergence for ",sum(isDiff)," observations"))
-  }
-  return(w)
-}
-
-pUNmod = function(w,theta,K,eps.sigma,n=length(eps.sigma),u=0)
-# function to compute marginal cdf of epsilon, minus u, to solve for eps
-{
-  # get CDF denominator
-  F.K    = pnorm(K - theta, mean = 0, sd = eps.sigma)
-  f.K    = dnorm(K - theta, mean = 0, sd = eps.sigma)
-  C      = (K-theta) * F.K + eps.sigma^2 * f.K
-  
-  # get CDF-u
-  F.w  = pnorm(w-theta, mean = 0, sd = eps.sigma)
-  f.w  = dnorm(w-theta, mean = 0, sd = eps.sigma)
-  cdfEps = ( (w-theta) * F.w + eps.sigma^2 * f.w ) / C - u
-  return(cdfEps)
-}
-
-getThMLE = function (ages, theta=NULL, K, eps.sigma, n=length(ages) )
+getThMLE = function (ages, theta=NULL, K, sd, n=length(ages) )
 {
   if(is.null(theta))  theta=min(ages)
   if(all(ages>K))
     theta = min(ages)
   else
-    theta = getThetaMLE(ages, theta=theta, eps.sigma, K )$par
+    theta = mle_fossil(ages, sd, K, alpha=NULL )$theta
   return(theta)
-}
-
-getThetaMLE = function(ages, theta=min(ages), eps.sigma, K )
-{
-  if(all(eps.sigma==0))
-    thetaMLE = list( par=min(ages), value=length(ages)*log(1/(K-min(ages))), hessian=-Inf )
-  else
-    thetaMLE = optim(theta,UNmodLogLik,ages=ages,sds=eps.sigma,K=K,method="Brent",lower=min(theta*c(0,2)),upper=max(theta*c(0,2)),control=list(trace=TRUE,fnscale=-1),hessian=TRUE)
-  return(thetaMLE)
-}
-
-UNmodLogLik = function(theta,ages,sds,K)
-{
-  # get F(K-theta), f(K-theta), f(w-theta)
-  lF.eps.w = pnorm(ages - theta, mean = 0, sd = sds, log.p=TRUE)
-  F.eps.K = pnorm(K - theta, mean = 0, sd = sds)
-  f.eps.K = dnorm(K - theta, mean = 0, sd = sds)
-  C = (K-theta) * F.eps.K + sds^2 * f.eps.K
-  dlUN = lF.eps.w - log(C)
-  return(ll=sum(dlUN))
 }

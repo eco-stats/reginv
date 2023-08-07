@@ -45,8 +45,9 @@ This function returns an object of class "reginv" with the following components:
 }
 \description{
 Estimates a confidence interval for extinction time using regression inversion, which finds a range of values for extinction time that
-are plausible considering the maximum likleihood estimator of the most recently observed fossil, accounting for sampling error (the fact that
+are plausible considering the maximum likelihood estimator of the most recently observed fossil, accounting for sampling error (the fact that
 the most recent fossil date is not necessarily the most recent time that the species was extant) and measurement error (error dating fossils).
+Usually takes a few seconds to run, because it is doing a lot of computation behind the scenes.
 }
 \details{
 Given a vector of fossil ages \code{ages} and corresponding measurement error standard deviations \code{sd}, and an upper limit \code{K} for the possible age of a fossil
@@ -65,9 +66,13 @@ It is assumed that \code{ages} has been specified with smaller values representi
 If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens.
 }
 \examples{
-ages = runif(20, 10000, 25000) #simulating some random data
-sd = runif(20, 50, 100)
+ages = rfossil(20, 10000, K=25000, sd=1000) #simulating some random data
 
-# for a point estimate plus 95\% CI
-reginv_fossil(ages=ages, sd=sd, K=25000, alpha=0.05) 
+# for a point estimate together with a 95\% CI
+reginv_fossil(ages=ages, sd=1000, K=25000, alpha=0.05) 
+
+# compare to estimates using asymptotic likelihood inference, which tend to
+# be narrower and have poorer coverage (they miss the true value too often
+# when n or sd is small):
+mle_fossil(ages=ages, sd=1000, K=25000, alpha=0.05) 
 }
