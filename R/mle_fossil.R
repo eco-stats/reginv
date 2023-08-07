@@ -66,11 +66,11 @@ mle_fossil = function(ages, sd, K, alpha=0.05, wald=FALSE, ...)
       if(inherits(lo,"try-error")) lo=list(root=thetaMLE$par)
       hi = try( uniroot(fossil_LRT,thetaMLE$par*c(1,1.25),thetaMLE,alpha=alpha, ages=ages,sd=sd,K=K,extendInt="upX", ...) )
       if(inherits(hi,"try-error")) hi=list(root=thetaMLE$par)
-      result = list( theta=c(lower=lo$root,mle=thetaMLE$par,upper=hi$root), se=SE)
     }
-    result$call <- match.call()
+    result = list( theta=c(lower=lo$root,mle=thetaMLE$par,upper=hi$root), se=SE)
     class(result)="reginv"
   }
+  result$call <- match.call()
   return( result )
 }
 
