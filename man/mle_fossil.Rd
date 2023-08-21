@@ -14,6 +14,8 @@ mle_fossil(ages, sd, K, df = NULL, alpha = 0.05, wald = FALSE, ...)
 \item{K}{Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 close to the age of the oldest fossil.}
 
+\item{df}{Numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (NULL) uses a Gaussian distribution.}
+
 \item{alpha}{Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals).
 If \code{alpha=NULL}, returns a maximum likelihood estimator only.}
 
