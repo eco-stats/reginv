@@ -8,6 +8,7 @@
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 #' close to the age of the oldest fossil.
+#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (NULL) uses a Gaussian distribution.
 #' @param alpha Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals).
 #'  If \code{alpha=NULL}, returns a maximum likelihood estimator only.
 #' @param wald logical; FALSE (default) uses profile likelihood, comparing the likelihood ratio statistic to a quantile from the chi-squared distribution,
@@ -45,9 +46,25 @@
 #' # get the MLE only
 #' mle_fossil(ages, sd=1000, K=25000, alpha=NULL) 
 
-mle_fossil = function(ages, sd, K, alpha=0.05, wald=FALSE, ...)
+mle_fossil = function(ages, sd, K, df=NULL, alpha=0.05, wald=FALSE, ...)
 {  
-  thetaMLE = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K)
+  nSD = length(sd)
+  n = length(ages)
+  if(nSD==1) sd = rep(sd,n)
+  if(nSD!=n & nSD!=1)
+  {
+    sd = rep(sd,length=n)
+    warning("lengths of 'ages' and sd' are not equal so will extend 'sd' as needed.")
+  }
+  
+  if(all(ages>K)) stop("'ages' need to be no larger than 'K'")
+  if(any(ages>K))
+  {
+    warning("Some ages exceed 'K', these will be ignored")
+    sd   = sd[ages<=K]
+    ages = ages[ages<=K]
+  }
+  thetaMLE = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
   SE = 1/sqrt(-thetaMLE$hessian)
   if(is.null(alpha))
   {
@@ -62,9 +79,9 @@ mle_fossil = function(ages, sd, K, alpha=0.05, wald=FALSE, ...)
     }
     else
     {
-      lo = try( uniroot(fossil_LRT,thetaMLE$par*c(0.25,1),thetaMLE,alpha=alpha, ages=ages,sd=sd,K=K,extendInt="downX", ...) )
+      lo = try( uniroot(fossil_LRT,thetaMLE$par*c(0.25,1),thetaMLE,alpha=alpha, ages=ages,sd=sd,K=K,df=df,extendInt="downX", ...) )
       if(inherits(lo,"try-error")) lo=list(root=thetaMLE$par)
-      hi = try( uniroot(fossil_LRT,thetaMLE$par*c(1,1.25),thetaMLE,alpha=alpha, ages=ages,sd=sd,K=K,extendInt="upX", ...) )
+      hi = try( uniroot(fossil_LRT,thetaMLE$par*c(1,1.25),thetaMLE,alpha=alpha, ages=ages,sd=sd,K=K,df=df,extendInt="upX", ...) )
       if(inherits(hi,"try-error")) hi=list(root=thetaMLE$par)
     }
     result = list( theta=c(lower=lo$root,mle=thetaMLE$par,upper=hi$root), se=SE)
@@ -74,22 +91,22 @@ mle_fossil = function(ages, sd, K, alpha=0.05, wald=FALSE, ...)
   return( result )
 }
 
-getThetaMLE = function(ages, theta=min(ages), sd, K )
+getThetaMLE = function(ages, theta=min(ages), sd, K, df )
 {
   if(all(sd==0))
     thetaMLE = list( par=min(ages), value=length(ages)*log(1/(K-min(ages))), hessian=-Inf )
   else
-    thetaMLE = optim(theta,fossil_LogLik,ages=ages,sd=sd,K=K,method="Brent",lower=min(theta*c(0,2)),upper=max(theta*c(0,2)),control=list(trace=TRUE,fnscale=-1),hessian=TRUE)
+    thetaMLE = optim(theta,fossil_LogLik,ages=ages,sd=sd,K=K,df=df,method="Brent",lower=min(theta*c(0,2)),upper=max(theta*c(0,2)),control=list(trace=TRUE,fnscale=-1),hessian=TRUE)
   return(thetaMLE)
 }
 
-fossil_LogLik = function(theta,ages,sd,K)
+fossil_LogLik = function(theta,ages,sd,K,df)
 {
-  return(ll=sum(dfossil(x=ages,theta=theta,K=K,sd=sd,log.p=TRUE)))
+  return(ll=sum(dfossil(x=ages,theta=theta,K=K,sd=sd,df=df,log=TRUE)))
 }
 
-fossil_LRT = function(theta0,thetaMLE,ages, sd, K, alpha=0.05)
+fossil_LRT = function(theta0,thetaMLE,ages, sd, K, df, alpha=0.05)
 {
-  ll0=fossil_LogLik(theta0,ages,sd,K)
+  ll0=fossil_LogLik(theta0,ages,sd,K,df)
   return(-2*(ll0-thetaMLE$value)-qchisq(1-alpha,1))
 }

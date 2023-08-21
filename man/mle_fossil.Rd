@@ -4,7 +4,7 @@
 \alias{mle_fossil}
 \title{Confidence Interval for Extinction Time using maximum likelihood (asymptotic)}
 \usage{
-mle_fossil(ages, sd, K, alpha = 0.05, wald = FALSE, ...)
+mle_fossil(ages, sd, K, df = NULL, alpha = 0.05, wald = FALSE, ...)
 }
 \arguments{
 \item{ages}{Numeric vector of fossil ages, with smaller values being more recent fossil ages.}

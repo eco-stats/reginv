@@ -51,12 +51,12 @@
 #' # when n or sd is small):
 #' mle_fossil(ages=ages, sd=1000, K=25000, alpha=0.05) 
 
-reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
+reginv_fossil = function(ages, sd, K, df, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
 {  
   # get paramInits, if not provided
   if(is.null(paramInits))
   {
-    ft.mle = mle_fossil(ages=ages, sd=sd, K=K, alpha=NULL)
+    ft.mle = mle_fossil(ages=ages, sd=sd, K=K, df=df, alpha=NULL)
     stepSize = max(ft.mle$se, IQR(ages)*0.1, na.rm=TRUE)
     paramInits = ft.mle$theta + stepSize*seq(-5,5,length=20)
   }
@@ -72,28 +72,28 @@ reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), pa
   result=list(theta=theta,q=q)
   for (iQ in 1:length(q)) {
     result$theta[[iQ]] = reginv(ages,getT=getThMLE,simulateData=simFn_fossil,paramInits=paramInits,
-                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, n=n, method=method)$theta
+                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, method=method)$theta
   }
   result$call <- match.call()
   class(result)="reginv"
   return(result)
 }
 
-simFn_fossil = function (theta, K, sd, n=length(sd))
+simFn_fossil = function (theta, K, sd, df, n=length(sd))
 {
   if(theta>K) #trying to game it to push estimates away from K 
     W = rep(theta,n)
   else
-    W = rfossil(theta, K, sd, n=n)
+    W = rfossil(theta, K, sd, df=df, n=n)
   return(W)
 }
 
-getThMLE = function (ages, theta=NULL, K, sd, n=length(ages) )
+getThMLE = function (ages, theta=NULL, K, sd, df, n=length(ages) )
 {
   if(is.null(theta))  theta=min(ages)
   if(all(ages>K))
     theta = min(ages)
   else
-    theta = mle_fossil(ages, sd, K, alpha=NULL )$theta
+    theta = mle_fossil(ages, sd, K, df=df, alpha=NULL )$theta
   return(theta)
 }

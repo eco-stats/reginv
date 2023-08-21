@@ -8,13 +8,29 @@
 \alias{qfossil}
 \title{The Uniform-Gaussian Distribution for Fossil Dates}
 \usage{
-rfossil(n, theta, K, sd, tol = sqrt(.Machine$double.eps), nIter = 50)
+rfossil(
+  n,
+  theta,
+  K,
+  sd,
+  df = NULL,
+  tol = sqrt(.Machine$double.eps),
+  nIter = 50
+)
 
-qfossil(p, theta, K, sd, tol = sqrt(.Machine$double.eps), nIter = 50)
+qfossil(
+  p,
+  theta,
+  K,
+  sd,
+  df = NULL,
+  tol = sqrt(.Machine$double.eps),
+  nIter = 50
+)
 
-pfossil(q, theta, K, sd, n = length(sd), lower.tail = TRUE, pMinus = 0)
+pfossil(q, theta, K, sd, df = NULL, lower.tail = TRUE, pMinus = 0)
 
-dfossil(x, theta, K, sd, log.p = FALSE)
+dfossil(x, theta, K, sd, df = NULL, log = FALSE)
 }
 \arguments{
 \item{n}{Number of observations (numeric)}
@@ -25,6 +41,8 @@ dfossil(x, theta, K, sd, log.p = FALSE)
 close to the age of the oldest fossil.}
 
 \item{sd}{Measurement error standard deviations for fossils. Can be a vector. If not of length \code{n}, it is cycled through repeatedly until length \code{n}.}
+
+\item{df}{numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (NULL) uses a Gaussian distribution.}
 
 \item{tol}{Numerical tolerance (defaults to \code{sqrt(.Machine$double.eps)}}
 
@@ -38,7 +56,7 @@ close to the age of the oldest fossil.}
 
 \item{x, q}{vector of quantiles}
 
-\item{log.p}{logical; if TRUE, densities \code{p} are given as \code{log(p)}.}
+\item{log}{logical; if TRUE, densities \code{p} are given as \code{log(p)}.}
 }
 \value{
 \code{dfossil} gives the density, \code{pfossil} gives the distribution function, \code{qnorm} 
@@ -49,7 +67,7 @@ The length of the result is determined by \code{n} for \code{rfossil}, and in ot
 length is reached, with a warning.
 }
 \description{
-Density, distribution function, quantile function and random generation for the Uniform-Gaussian distribution
+Density, distribution function, quantile function and random generation for the Uniform-T distribution
 for fossil dates with extinction time \code{theta}, oldest observable data \code{K} and measurement error \code{sd}.
 }
 \details{
@@ -72,4 +90,6 @@ qfossil(c(0.25,0.75), 10000, 25000, 1000) # find first and third quartiles
 # plot the density function
 w = seq(5000,26000,length=1000)
 plot(w,dfossil(w,10000,25000,1000),type="l",ylab="pdf(w)")
+# compare to density if measurement error came from t(2) distribution
+plot(w,dfossil(w,10000,25000,1000,df=2),type="l",ylab="pdf(w)")
 }

@@ -1,6 +1,6 @@
 #' The Uniform-Gaussian Distribution for Fossil Dates
 #'
-#' Density, distribution function, quantile function and random generation for the Uniform-Gaussian distribution
+#' Density, distribution function, quantile function and random generation for the Uniform-T distribution
 #' for fossil dates with extinction time \code{theta}, oldest observable data \code{K} and measurement error \code{sd}.
 #' @param x,q vector of quantiles
 #' @param p vector of probabilities
@@ -9,7 +9,8 @@
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 #' close to the age of the oldest fossil.
 #' @param sd Measurement error standard deviations for fossils. Can be a vector. If not of length \code{n}, it is cycled through repeatedly until length \code{n}.
-#' @param log.p logical; if TRUE, densities \code{p} are given as \code{log(p)}.
+#' @param df numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (NULL) uses a Gaussian distribution.
+#' @param log logical; if TRUE, densities \code{p} are given as \code{log(p)}.
 #' @param lower.tail logical; if TRUE (default), probabilities \code{p} are \eqn{P[X\leq x]}{P(X<=x)} otherwise \eqn{P[X>x]}{P(X>x)}.
 #' @param tol Numerical tolerance (defaults to \code{sqrt(.Machine$double.eps)}
 #' @param nIter The maximum number of iterations to use estimating random numbers before resorting to \code{uniroot} (which is slower).
@@ -44,60 +45,55 @@
 #' # plot the density function
 #' w = seq(5000,26000,length=1000)
 #' plot(w,dfossil(w,10000,25000,1000),type="l",ylab="pdf(w)")
+#' # compare to density if measurement error came from t(2) distribution
+#' plot(w,dfossil(w,10000,25000,1000,df=2),type="l",ylab="pdf(w)")
 #' @aliases fossil rfossil dfossil pfossil qfossil
-rfossil = function(n, theta, K, sd, tol=sqrt(.Machine$double.eps), nIter=50)
+rfossil = function(n, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=50)
 {
-  if(length(theta)>1) stop("'theta' must be scalar")
-  if(length(K)>1) stop("'K' must be scalar")
   if(length(n)>1) stop("'n' must be scalar")
-  #ensure sds is the right length
-  nSD = length(sd)
-  if(nSD!=n & nSD!=1)
-  {
-    sd = rep(sd,length=n)
-    warning("length of 'sd' is not equal to 'n' so will extend 'sd' as needed.")
-  }
-  
-  w = qfossil(p=runif(n), theta=theta, K=K, sd=sd, tol=tol, nIter=nIter)
+  sdVec = checkParams(n, theta, K, df, sd)
+  w = qfossil(p=runif(n), theta=theta, K=K, sd=sdVec, df=df, tol=tol, nIter=nIter)
   return(w)
 }
 
 ##' @rdname fossil
 ##' @export
-qfossil = function(p, theta, K, sd, tol=sqrt(.Machine$double.eps), nIter=50)
+qfossil = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=50)
 {
   # sort out the dimensions of inputs
-  if(length(theta)>1) stop("theta must be scalar")
-  if(length(K)>1) stop("K must be scalar")
-  nSD = length(sd)
-  nP  = length(p)
-  if(nSD==1)
-  {
-    sd = rep(sd,length=nP)
-    nSD = nP # to avoid below warning for scalar sd
-  }
-  if(nSD!=nP)
-  {
-    sd = rep(sd,length=nP)
-    warning("length of 'sd' is not equal to length of 'p' so will extend 'sd' as needed.")
-  }
+  nP = length(p)
+  sdVec = checkParams(nP,theta,K,df,sd)
 
+  # get functions to compute F(e) and int e(f(e)) for measurement error e
+  funs = getDFs(df)
+  
   # compute C and p/C
-  F.K  = pnorm(K - theta, mean = 0, sd = sd)
-  f.K  = dnorm(K - theta, mean = 0, sd = sd)
-  Cinv = (K-theta) * F.K + sd^2 * f.K
+  Ksd  = (K-theta)/sdVec
+  F.K  = funs$CDF(Ksd,df)
+  f.K  = funs$fe(Ksd,df)
+  Cinv = (K-theta) * F.K + sdVec * f.K
   pOnC = p * Cinv
   
   # now get cracking finding w
   q      = qOld = theta + p*(K-theta) # starting estimate (solution when sd=0)
-  F.q    = f.q = rep(0,nP) 
+  F.q    = f.q = qSD = rep(0,nP) 
   iter   = 0
-  isDiff = sd!=0 #only do the below when sd is non-zero
+  isDiff = sdVec!=0 #only do the below when sd is non-zero
+
+  # check for silly p's, set to NaN and remove from consideration
+  wrongP = p<0 | p>1
+  if(any(wrongP))
+  {
+    q[wrongP]=NaN
+    warning("NaNs produced")    
+    isDiff[wrongP]=FALSE
+  }
   while(any(isDiff) & iter<nIter)
   {
-    F.q[isDiff]  = pnorm(qOld[isDiff]-theta, mean = 0, sd = sd[isDiff])
-    f.q[isDiff]  = dnorm(qOld[isDiff]-theta, mean = 0, sd = sd[isDiff])
-    q[isDiff]    = theta + ( pOnC[isDiff] - sd[isDiff]^2 * f.q[isDiff] ) / F.q[isDiff]
+    qSD[isDiff]  = (qOld[isDiff]-theta)/sdVec[isDiff]
+    F.q[isDiff]  = funs$CDF(qSD[isDiff],df)
+    f.q[isDiff]  = funs$fe(qSD[isDiff],df)
+    q[isDiff]    = theta + ( pOnC[isDiff] - sdVec[isDiff] * f.q[isDiff] ) / F.q[isDiff]
     q[isDiff]    = pmin(q[isDiff],K) #ensure it is less than K
     qDiff        = abs(q-qOld)
     isDiff       = qDiff>tol
@@ -110,7 +106,7 @@ qfossil = function(p, theta, K, sd, tol=sqrt(.Machine$double.eps), nIter=50)
   {
     for(iObs in which(isDiff))
     {
-      qTry = try( uniroot( pfossil, interval=c(qnorm(sqrt(tol),mean=0,sd=sd[iObs]),K-theta),tol=tol,n=1,theta=theta,sd=sd[iObs],K=K,pMinus=p[iObs],extendInt="upX") )
+      qTry = try( uniroot( pfossil, interval=c(qnorm(sqrt(tol),mean=0,sd=sdVec[iObs]),K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,pMinus=p[iObs],extendInt="upX") )
       if(inherits(qTry,"try-error")==FALSE)
       {
         q[iObs] = qTry$root
@@ -124,65 +120,96 @@ qfossil = function(p, theta, K, sd, tol=sqrt(.Machine$double.eps), nIter=50)
 
 ##' @rdname fossil
 ##' @export
-pfossil = function(q,theta,K,sd,n=length(sd),lower.tail=TRUE,pMinus=0)
+pfossil = function(q,theta,K,sd,df=NULL,lower.tail=TRUE,pMinus=0)
 # function to compute marginal cdf of epsilon, minus u, to solve for eps
 {
   # sort out the dimensions of inputs
-  if(length(theta)>1) stop("theta must be scalar")
-  if(length(K)>1) stop("K must be scalar")
-  nSD = length(sd)
-  nQ  = length(q)
-  if(nSD!=nQ & nSD!=1)
-  {
-    sd = rep(sd,length=nQ)
-    warning("length of 'sd' is not equal to length of 'q' so will extend 'sd' as needed.")
-  }
-  if (lower.tail==TRUE) q=1-q
+  sdVec = checkParams(length(q),theta,K,df,sd)
 
-  # get CDF denominator
-  F.K  = pnorm(K - theta, mean = 0, sd = sd)
-  f.K  = dnorm(K - theta, mean = 0, sd = sd)
-  Cinv = (K-theta) * F.K + sd^2 * f.K
+  # get functions to compute F(e) and int e(f(e)) for measurement error e
+  funs = getDFs(df)
   
+  # get CDF denominator
+  Ksd  = (K-theta)/sdVec
+  F.K  = funs$CDF(Ksd,df)
+  f.K  = funs$fe(Ksd,df)
+  Cinv = (K-theta) * F.K + sdVec * f.K
   # get CDF-u
-  F.q  = pnorm(q-theta, mean = 0, sd = sd)
-  f.q  = dnorm(q-theta, mean = 0, sd = sd)
-  cdf  = ( (q-theta) * F.q + sd^2 * f.q ) / Cinv - pMinus
+  qSD  = (q-theta)/sdVec
+  F.q  = funs$CDF(qSD,df)
+  f.q  = funs$fe(qSD,df)
+  cdf  = ( (q-theta) * F.q + sdVec * f.q ) / Cinv - pMinus
   cdf[q>K] = 1 - pMinus
+  if (lower.tail==FALSE) cdf=1-cdf
   return(cdf)
 }
 
 ##' @rdname fossil
 ##' @export
-dfossil = function(x,theta,K,sd,log.p=FALSE)
-  # function to compute marginal cdf of epsilon, minus u, to solve for eps
+dfossil = function(x,theta,K,sd,df=NULL,log=FALSE)
+# function to compute marginal cdf of epsilon, minus u, to solve for eps
 {
   # sort out the dimensions of inputs
-  if(length(theta)>1) stop("theta must be scalar")
-  if(length(K)>1) stop("K must be scalar")
-  nSD = length(sd)
-  nX  = length(x)
-  if(nSD!=nX & nSD!=1)
-  {
-    sd = rep(sd,length=nX)
-    warning("length of 'sd' is not equal to length of 'x' so will extend 'sd' as needed.")
-  }
+  sdVec = checkParams(length(x),theta,K,df,sd)
+  
+  # get functions to compute F(e) and int e(f(e)) for measurement error e
+  funs = getDFs(df)
 
   # get CDF denominator
-  F.K  = pnorm(K - theta, mean = 0, sd = sd)
-  f.K  = dnorm(K - theta, mean = 0, sd = sd)
-  Cinv = (K-theta) * F.K + sd^2 * f.K
+  Ksd  = (K-theta)/sdVec
+  F.K  = funs$CDF(Ksd,df)
+  f.K  = funs$fe(Ksd,df)
+  Cinv = (K-theta) * F.K + sdVec * f.K
   
   # get CDF-u
-  if(log.p)
+  xSD  = (x-theta)/sdVec
+  if(log)
   {
-    pdf = pnorm(x-theta, mean = 0, sd = sd, log.p=TRUE) - log(Cinv)
+    pdf = funs$CDF(xSD,df,log.p=TRUE) - log(Cinv)
     pdf[x>K] = -Inf
   }
   else
   {
-    pdf = pnorm(x-theta, mean = 0, sd = sd)/Cinv
+    pdf = funs$CDF(xSD,df)/Cinv
     pdf[x>K] = 0
   }
   return(pdf)
 }
+
+# checking if parameters are all the right dimensions
+checkParams = function(n,theta,K,df,sd)
+{
+  if(length(theta)>1) stop("'theta' must be scalar")
+  if(length(K)>1) stop("'K' must be scalar")
+  if(is.null(df)==FALSE)
+  {
+    if(length(df)>1) stop("'df' must be scalar")
+    if(df<2) stop("'df' must be at least 2")
+  }
+  #ensure sds is the right length
+  sdVec=sd #return this if sd has length n
+  nSD = length(sd)
+  if(nSD==1) sdVec = rep(sd,n)
+  if(nSD!=n & nSD!=1)
+  {
+    sdVec = rep(sd,length=n)
+    warning("length of 'sd' is not equal to length of first argument so will extend 'sd' as needed.")
+  }
+  return(sdVec)
+}
+
+# define measurement error distribution function F(e) and integral of ef(e), used to compute fossil CDF
+getDFs = function(df)
+{
+  if(is.null(df))
+  {
+    CDFx  = function(xSD,df,log.p=FALSE){pnorm(xSD, mean = 0, sd = 1, log.p=log.p)}
+    fex  = function(xSD,df){dnorm(xSD, mean = 0, sd = 1)}
+  }
+  else
+  {
+    CDFx  = function(xSD,df,log.p=FALSE){ pt( xSD, df, log.p=log.p) }
+    fex  = function(xSD,df){ dt(xSD,df) * df/(df-1) * (1+xSD^2/df) }
+  }
+  return(list(CDF=CDFx,fe=fex))
+}  
