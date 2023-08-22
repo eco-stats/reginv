@@ -106,7 +106,7 @@ qfossil = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIte
   {
     for(iObs in which(isDiff))
     {
-      qTry = try( uniroot( pfossil, interval=c(qnorm(sqrt(tol),mean=0,sd=sdVec[iObs]),K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,pMinus=p[iObs],extendInt="upX") )
+      qTry = try( uniroot( pfossil, interval=c(qnorm(sqrt(tol),mean=0,sd=sdVec[iObs]),K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,df=df,pMinus=p[iObs],extendInt="upX") )
       if(inherits(qTry,"try-error")==FALSE)
       {
         q[iObs] = qTry$root
