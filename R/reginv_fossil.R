@@ -59,7 +59,10 @@ reginv_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,0.5,1-alp
   {
     ft.mle = mle_fossil(ages=ages, sd=sd, K=K, df=df, alpha=NULL)
     stepSize = ifelse( any(sd==0), IQR(ages)*0.1, ft.mle$se )
-    paramInits = ft.mle$theta + stepSize*seq(-5,5,length=20)
+    if(method=="prob") #give prob extra starting values to reduce chance of separation
+      paramInits = ft.mle$theta + stepSize*seq(-5,5,length=100) 
+    else
+      paramInits = ft.mle$theta + stepSize*seq(-5,5,length=20)
   }
   
   # set up result list.

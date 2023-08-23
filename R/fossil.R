@@ -141,7 +141,7 @@ pfossil = function(q,theta,K,sd,df=NULL,lower.tail=TRUE,pMinus=0)
   F.q  = funs$CDF(qSD,df)
   f.q  = funs$fe(qSD,df)
   cdf  = ( (q-theta) * F.q + sdVec * f.q ) / Cinv - pMinus
-  cdf[q>K] = 1 - pMinus
+  cdf[q>K] = 1 - pMinus #set CDF to one if q>K
   if (lower.tail==FALSE) cdf=1-cdf
   return(cdf)
 }
