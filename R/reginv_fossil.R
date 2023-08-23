@@ -58,7 +58,7 @@ reginv_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,0.5,1-alp
   if(is.null(paramInits))
   {
     ft.mle = mle_fossil(ages=ages, sd=sd, K=K, df=df, alpha=NULL)
-    stepSize = max(ft.mle$se, IQR(ages)*0.1, na.rm=TRUE)
+    stepSize = ifelse( any(sd==0), IQR(ages)*0.1, ft.mle$se )
     paramInits = ft.mle$theta + stepSize*seq(-5,5,length=20)
   }
   
@@ -89,9 +89,8 @@ simFn_fossil = function (theta, K, sd, df, n=length(sd))
   return(W)
 }
 
-getThMLE = function (ages, theta=NULL, K, sd, df, n=length(ages) )
+getThMLE = function (ages, K, sd, df, n=length(ages) )
 {
-  if(is.null(theta))  theta=min(ages)
   if(all(ages>K))
     theta = min(ages)
   else

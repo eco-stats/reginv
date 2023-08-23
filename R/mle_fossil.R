@@ -96,7 +96,7 @@ getThetaMLE = function(ages, theta=min(ages), sd, K, df )
   if(all(sd==0))
     thetaMLE = list( par=min(ages), value=length(ages)*log(1/(K-min(ages))), hessian=-Inf )
   else
-    thetaMLE = optim(theta,fossil_LogLik,ages=ages,sd=sd,K=K,df=df,method="Brent",lower=min(theta*c(0,2)),upper=max(theta*c(0,2)),control=list(trace=TRUE,fnscale=-1),hessian=TRUE)
+    thetaMLE = optim(theta,fossil_LogLik,ages=ages,sd=sd,K=K,df=df,method="Brent",lower=min(theta*c(-2,2)),upper=max(theta*c(-2,2)),control=list(trace=TRUE,fnscale=-1),hessian=TRUE)
   return(thetaMLE)
 }
 

@@ -45,8 +45,8 @@
 #' # plot the density function
 #' w = seq(5000,26000,length=1000)
 #' plot(w,dfossil(w,10000,25000,1000),type="l",ylab="pdf(w)")
-#' # compare to density if measurement error came from t(2) distribution
-#' plot(w,dfossil(w,10000,25000,1000,df=2),type="l",ylab="pdf(w)")
+#' # compare to density if measurement error came from t(4) distribution
+#' plot(w,dfossil(w,10000,25000,1000,df=4),type="l",ylab="pdf(w,df=4)")
 #' @aliases fossil rfossil dfossil pfossil qfossil
 rfossil = function(n, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=50)
 {
@@ -106,8 +106,10 @@ qfossil = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIte
   {
     for(iObs in which(isDiff))
     {
-      qTry = try( uniroot( pfossil, interval=c(qnorm(sqrt(tol),mean=0,sd=sdVec[iObs]),K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,df=df,pMinus=p[iObs],extendInt="upX") )
-      if(inherits(qTry,"try-error")==FALSE)
+      eCrit = ifelse(is.null(df), qnorm(p[iObs]/2), qt(p[iObs]/2,df) )
+      qTry = try( uniroot( pfossil, interval=c(theta+sdVec[iObs]*eCrit,K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,df=df,pMinus=p[iObs],extendInt="upX") )
+
+            if(inherits(qTry,"try-error")==FALSE)
       {
         q[iObs] = qTry$root
         isDiff[iObs] = FALSE
