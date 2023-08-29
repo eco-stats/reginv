@@ -90,6 +90,6 @@ qfossil(c(0.25,0.75), 10000, 25000, 1000) # find first and third quartiles
 # plot the density function
 w = seq(5000,26000,length=1000)
 plot(w,dfossil(w,10000,25000,1000),type="l",ylab="pdf(w)")
-# compare to density if measurement error came from t(2) distribution
-plot(w,dfossil(w,10000,25000,1000,df=2),type="l",ylab="pdf(w)")
+# compare to density if measurement error came from t(4) distribution
+plot(w,dfossil(w,10000,25000,1000,df=4),type="l",ylab="pdf(w,df=4)")
 }

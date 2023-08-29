@@ -54,26 +54,6 @@
 
 reginv_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
 {  
-  # get paramInits, if not provided
-  if(is.null(paramInits))
-  {
-    ft.mle = mle_fossil(ages=ages, sd=sd, K=K, df=df, alpha=NULL)
-    stepSize = ifelse( any(sd==0), IQR(ages)*0.1, ft.mle$se )
-    if(method=="prob") #give prob extra starting values to reduce chance of separation
-      paramInits = ft.mle$theta + stepSize*seq(-5,5,length=100) 
-    else
-      paramInits = ft.mle$theta + stepSize*seq(-5,5,length=100)
-  }
-  
-  # get data and test stats for initial parameters just once
-  n <- length(ages)
-  stats=data.frame(theta=NULL,T=NULL,thetaEst=NULL)
-  for(i in 1:length(paramInits) )
-  {
-    newDat = simFn_fossil(theta=paramInits[i],K=K,sd=sd,df=df,n=n)
-    stats = rbind(stats, c(theta=paramInits[i], T = getThMLE(newDat, K=K,sd=sd,df=df,n=n), thetaEst=paramInits[i]) )
-  }      
-  names(stats)=c("theta","T","thetaEst")
   
   # set up result list.
   theta = rep(NA,length(q))
@@ -83,8 +63,31 @@ reginv_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,0.5,1-alp
     names(theta)=names(q)
   result=list(theta=theta,q=q)
   
-  # now call reginv to get results
+  # if paramInits provided, get data and test stats for initial parameters just once
+  n <- length(ages)
+  stats=data.frame(theta=NULL,T=NULL,thetaEst=NULL)
+  if(is.null(paramInits)==FALSE)
+  {
+    for(i in 1:length(paramInits) )
+    {
+      newDat = simFn_fossil(theta=paramInits[i],K=K,sd=sd,df=df,n=n)
+      stats = rbind(stats, c(theta=paramInits[i], T = getThMLE(newDat, K=K,sd=sd,df=df,n=n), thetaEst=paramInits[i]) )
+    }      
+    names(stats)=c("theta","T","thetaEst")
+  }
+
+  # get results for each value of q
   for (iQ in 1:length(q)) {
+
+    # get paramInits, if not provided
+    if(is.null(paramInits))
+    {
+      ft.mle = mle_fossil(ages=ages, sd=sd, K=K, df=df, q=q[iQ])
+      stepSize = ifelse( any(sd==0), IQR(ages)*0.1, ft.mle$se )
+      paramInits = ft.mle$ci[1] + stepSize*seq(-5,5,length=100) 
+      stats = NULL
+    }
+    # call reginv
     result$theta[[iQ]] = reginv(ages,getT=getThMLE,simulateData=simFn_fossil,paramInits=paramInits,
                         q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, method=method,stats=stats)$theta
   }

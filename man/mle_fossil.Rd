@@ -4,7 +4,16 @@
 \alias{mle_fossil}
 \title{Confidence Interval for Extinction Time using maximum likelihood (asymptotic)}
 \usage{
-mle_fossil(ages, sd, K, df = NULL, alpha = 0.05, wald = FALSE, ...)
+mle_fossil(
+  ages,
+  sd,
+  K,
+  df = NULL,
+  alpha = 0.05,
+  q = c(alpha/2, 1 - alpha/2),
+  wald = FALSE,
+  ...
+)
 }
 \arguments{
 \item{ages}{Numeric vector of fossil ages, with smaller values being more recent fossil ages.}
@@ -19,6 +28,9 @@ close to the age of the oldest fossil.}
 \item{alpha}{Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals).
 If \code{alpha=NULL}, returns a maximum likelihood estimator only.}
 
+\item{q}{Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,1-alpha/2)},
+which gives the limits of a 100(1-\code{alpha})\% confidence interval. If \code{q} is specified it overrides any input for \code{alpha}.}
+
 \item{wald}{logical; FALSE (default) uses profile likelihood, comparing the likelihood ratio statistic to a quantile from the chi-squared distribution,
 TRUE uses a Wald interval (which has very poor performance for small sample sizes!)}
 
@@ -26,10 +38,12 @@ TRUE uses a Wald interval (which has very poor performance for small sample size
 TRUE uses a Wald interval (which has very poor performance for small sample sizes!)}
 }
 \value{
-This function returns an object of class "reginv" with the following components:
+This function returns an object of class "mle_fossil" with the following components:
 
- \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
- \item{q}{ the vector of quantiles used in estimation.}
+ \item{theta}{ a maximum likelihood estimator of \code{theta}.}
+ \item{se}{ the estimated standard error of the MLE.}
+ \item{ci}{ a vector of confidence limits for \code{theta} at the chosen confidence levels.}
+ \item{q}{ the vector of quantiles used in estimation (if applicable).}
  \item{call }{ the function call}
 }
 \description{

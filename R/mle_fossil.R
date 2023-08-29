@@ -11,6 +11,8 @@
 #' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (NULL) uses a Gaussian distribution.
 #' @param alpha Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals).
 #'  If \code{alpha=NULL}, returns a maximum likelihood estimator only.
+#' @param q Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,1-alpha/2)},
+#' which gives the limits of a 100(1-\code{alpha})\% confidence interval. If \code{q} is specified it overrides any input for \code{alpha}.
 #' @param wald logical; FALSE (default) uses profile likelihood, comparing the likelihood ratio statistic to a quantile from the chi-squared distribution,
 #'  TRUE uses a Wald interval (which has very poor performance for small sample sizes!)
 #' @param ... logical; FALSE (default) uses profile likelihood, comparing the likelihood ratio statistic to a quantile from the chi-squared distribution,
@@ -33,10 +35,12 @@
 #' It is assumed that \code{ages} has been specified with smaller values representing more recent specimens, for example, \code{ages} could be specified in years before present.
 #' If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens. 
 #' 
-#' @return This function returns an object of class "reginv" with the following components:
+#' @return This function returns an object of class "mle_fossil" with the following components:
 #'
-#'  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
-#'  \item{q}{ the vector of quantiles used in estimation.}
+#'  \item{theta}{ a maximum likelihood estimator of \code{theta}.}
+#'  \item{se}{ the estimated standard error of the MLE.}
+#'  \item{ci}{ a vector of confidence limits for \code{theta} at the chosen confidence levels.}
+#'  \item{q}{ the vector of quantiles used in estimation (if applicable).}
 #'  \item{call }{ the function call}
 #' @export
 #' @examples
@@ -46,7 +50,7 @@
 #' # get the MLE only
 #' mle_fossil(ages, sd=1000, K=25000, alpha=NULL) 
 
-mle_fossil = function(ages, sd, K, df=NULL, alpha=0.05, wald=FALSE, ...)
+mle_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,1-alpha/2), wald=FALSE, ...)
 {  
   nSD = length(sd)
   n = length(ages)
@@ -66,28 +70,47 @@ mle_fossil = function(ages, sd, K, df=NULL, alpha=0.05, wald=FALSE, ...)
   }
   thetaMLE = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
   SE = 1/sqrt(-thetaMLE$hessian)
+  
   if(is.null(alpha))
   {
-    result = list(theta=thetaMLE$par, se=SE)
+    result = list(theta=thetaMLE$par, se=SE, call=match.call())
   }
   else
   {
+    # set up result list.
+    ci=rep(NA,length(q))
+    if(is.null(names(q)))
+      names(ci)=paste0("q=",q)
+    else
+      names(ci)=names(q)
+
     if(wald==TRUE)
     {
-      lo = list( root=thetaMLE$par - qnorm(1-alpha/2) * SE )
-      hi = list( root=thetaMLE$par + qnorm(1-alpha/2) * SE )
+      ci = thetaMLE$par + qnorm(q) * SE
     }
     else
     {
-      lo = try( uniroot(fossil_LRT,thetaMLE$par*c(0.25,1),thetaMLE,alpha=alpha, ages=ages,sd=sd,K=K,df=df,extendInt="downX", ...) )
-      if(inherits(lo,"try-error")) lo=list(root=thetaMLE$par)
-      hi = try( uniroot(fossil_LRT,thetaMLE$par*c(1,1.25),thetaMLE,alpha=alpha, ages=ages,sd=sd,K=K,df=df,extendInt="upX", ...) )
-      if(inherits(hi,"try-error")) hi=list(root=thetaMLE$par)
+      nQ=length(q)
+      # set search limits so that we look above MLE if q>0.5 and below otherwise 
+      q2Tail = 2*pmin(q,1-q)
+      qLo = qHi = rep(1,nQ)
+      qLo[q<=0.5] = 0.25
+      qHi[q>=0.5] = 1.25
+      # note LRT function is increasing for q>0.5 
+      dir = rep("downX",nQ)
+      dir[q>=0.5]="upX"
+      for(iQ in 1:nQ)
+      {
+        thLim = try( uniroot(fossil_LRT,thetaMLE$par*c(qLo[iQ],qHi[iQ]),thetaMLE,alpha=q2Tail[iQ], ages=ages,sd=sd,K=K,df=df,extendInt=dir[iQ], ...) )
+        if(inherits(thLim,"try-error"))
+          ci[iQ] = thetaMLE$par
+        else
+          ci[iQ] = thLim$root
+      }
     }
-    result = list( theta=c(lower=lo$root,mle=thetaMLE$par,upper=hi$root), se=SE)
-    class(result)="reginv"
+    result = list( theta=thetaMLE$par, ci=ci, se=SE, q=q, call=match.call())
   }
-  result$call <- match.call()
+  class(result)="mle_fossil"
   return( result )
 }
 
