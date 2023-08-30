@@ -200,8 +200,9 @@ getThetaSim = function(iter,thetaEst,thetaSims,a)
   # a tells us how much to weight mean of all obs compared to current obs
   thetaNew = (a*iter+1-a)*thetaEst - a*sum(thetaSims)
   # put bounds on thetaNew so no crazy shit
-  if(a>0) thetaNext = noOutliers(thetaNew,thetaSims)
-  thetaNext=thetaNew
+  #  if(a>0) 
+    thetaNext = noOutliers(thetaNew,thetaSims)
+  # thetaNext=thetaNew
   return(thetaNext)
 }
 noOutliers = function(thetaNew,thetas)
