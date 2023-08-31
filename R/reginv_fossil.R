@@ -83,7 +83,7 @@ reginv_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,0.5,1-alp
     if(is.null(paramInits))
     {
       ft.mle = mle_fossil(ages=ages, sd=sd, K=K, df=df, q=q[iQ])
-      stepSize = ifelse( any(sd==0), IQR(ages)*0.1, ft.mle$se )
+      stepSize = ifelse( any(sd==0)|is.nan(ft.mle$se), IQR(ages)*0.1, ft.mle$se )
       paramInits = ft.mle$ci[1] + stepSize*seq(-5,5,length=100) 
       stats = NULL
     }
