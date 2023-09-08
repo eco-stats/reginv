@@ -2,7 +2,7 @@
 #'
 #' Estimates a confidence interval for extinction time using maximum likelihood techniques -- either a Wald interval is used or
 #' a profile likelihood technique is used, inverting the likelihood ratio statistic comparing to the appropriate quantile for the chi-squared distribution.
-#' These methods do not have good small sample properties, especially when the measurement error is small, \code{\link{reginv_fossil}} is preferred.
+#' These methods do not have good small sample properties, especially when the measurement error is small, \code{\link{reginv_cutt}} is preferred in these settings.
 #'
 #' @param ages Numeric vector of fossil ages, with smaller values being more recent fossil ages.
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
@@ -35,8 +35,8 @@
 #' It is assumed that \code{ages} has been specified with smaller values representing more recent specimens, for example, \code{ages} could be specified in years before present.
 #' If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens. 
 #' 
-#' @seealso rfossil
-#' @return This function returns an object of class "mle_fossil" with the following components:
+#' @seealso rcutt
+#' @return This function returns an object of class "mle_cutt" with the following components:
 #'
 #'  \item{theta}{ a maximum likelihood estimator of \code{theta}.}
 #'  \item{se}{ the estimated standard error of the MLE.}
@@ -45,13 +45,13 @@
 #'  \item{call }{ the function call}
 #' @export
 #' @examples
-#' ages = rfossil(20, 10000, K=25000, sd=1000) #simulating some random data
+#' ages = rcutt(20, 10000, K=25000, sd=1000) #simulating some random data
 #' # for the maximum likelihood estimate and a 95% CI
-#' mle_fossil(ages, sd=1000, K=25000, alpha=0.05) 
+#' mle_cutt(ages, sd=1000, K=25000, alpha=0.05) 
 #' # get the MLE only
-#' mle_fossil(ages, sd=1000, K=25000, alpha=NULL) 
+#' mle_cutt(ages, sd=1000, K=25000, alpha=NULL) 
 
-mle_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,1-alpha/2), wald=FALSE, ...)
+mle_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,1-alpha/2), wald=FALSE, ...)
 {  
   nSD = length(sd)
   n = length(ages)
@@ -94,17 +94,19 @@ mle_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,1-alpha/2), 
       nQ = length(q)
       q2Tail      = 2*min(q,1-q)
       # set search limits so that we look above MLE if q>0.5 and below otherwise 
-      is_SE_bad   = is.nan(SE) | is.infinite(SE) | SE==0
-      searchLim   = ifelse( is_SE_bad, IQR(ages)*0.5, SE*5 )
+#     is_SE_bad   = is.nan(SE) | is.infinite(SE) | SE==0
+#     searchLim   = ifelse( is_SE_bad, IQR(ages)*0.5, SE*5 )
       qLo = qHi   = rep(thetaMLE$par,nQ)
-      qLo[q<=0.5] = thetaMLE$par-searchLim
-      qHi[q>=0.5] = min(thetaMLE$par+searchLim,K)
+#     qLo[q<=0.5] = thetaMLE$par-searchLim
+#     qHi[q>=0.5] = min(thetaMLE$par+searchLim,K)
+      qLo[q<=0.5] = thetaMLE$par*0.25
+      qHi[q>=0.5] = min(thetaMLE$par*1.25,K)
       # note LRT function is increasing for q>0.5 
       dir         = rep("downX",nQ)
       dir[q>=0.5] ="upX"
       for(iQ in 1:nQ)
       {
-        thLim = try( uniroot(fossil_LRT, c(qLo[iQ],qHi[iQ]), thetaMLE, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, df=df, extendInt=dir[iQ], ...) )
+        thLim = try( uniroot(cutt_LRT, c(qLo[iQ],qHi[iQ]), thetaMLE, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, df=df, extendInt=dir[iQ], ...) )
         if(inherits(thLim,"try-error"))
           ci[iQ] = thetaMLE$par
         else
@@ -113,7 +115,7 @@ mle_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,1-alpha/2), 
     }
     result = list( theta=thetaMLE$par, ci=ci, se=SE, q=q, call=match.call())
   }
-  class(result)="mle_fossil"
+  class(result)="mle_cutt"
   return( result )
 }
 
@@ -122,17 +124,17 @@ getThetaMLE = function(ages, theta=min(ages), sd, K, df )
   if(all(sd==0))
     thetaMLE = list( par=min(ages), value=length(ages)*log(1/(K-min(ages))), hessian=-Inf )
   else
-    thetaMLE = optim(theta,fossil_LogLik,ages=ages,sd=sd,K=K,df=df,method="Brent",lower=-1/sqrt(.Machine$double.eps),upper=K,control=list(trace=TRUE,fnscale=-1),hessian=TRUE)
+    thetaMLE = optim(theta,cutt_LogLik,ages=ages,sd=sd,K=K,df=df,method="Brent",lower=-1/sqrt(.Machine$double.eps),upper=K,control=list(trace=TRUE,fnscale=-1),hessian=TRUE)
   return(thetaMLE)
 }
 
-fossil_LogLik = function(theta,ages,sd,K,df)
+cutt_LogLik = function(theta,ages,sd,K,df)
 {
-  return(ll=sum(dfossil(x=ages,theta=theta,K=K,sd=sd,df=df,log=TRUE)))
+  return(ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=df,log=TRUE)))
 }
 
-fossil_LRT = function(theta0,thetaMLE,ages, sd, K, df, alpha=0.05)
+cutt_LRT = function(theta0,thetaMLE,ages, sd, K, df, alpha=0.05)
 {
-  ll0=fossil_LogLik(theta0,ages,sd,K,df)
+  ll0=cutt_LogLik(theta0,ages,sd,K,df)
   return(-2*(ll0-thetaMLE$value)-qchisq(1-alpha,1))
 }

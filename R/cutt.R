@@ -1,6 +1,6 @@
-#' The Uniform-Gaussian Distribution for Fossil Dates
+#' The Compound Uniform-Truncated T (CUTT) Distribution for Fossil Dates
 #'
-#' Density, distribution function, quantile function and random generation for the Uniform-T distribution
+#' Density, distribution function, quantile function and random generation for the Compound Uniform-Truncated T (CUTT) distribution
 #' for fossil dates with extinction time \code{theta}, oldest observable data \code{K} and measurement error \code{sd}.
 #' @param x,q vector of quantiles
 #' @param p vector of probabilities
@@ -14,7 +14,7 @@
 #' @param lower.tail logical; if TRUE (default), probabilities \code{p} are \eqn{P[X\leq x]}{P(X<=x)} otherwise \eqn{P[X>x]}{P(X>x)}.
 #' @param tol Numerical tolerance (defaults to \code{sqrt(.Machine$double.eps)}
 #' @param nIter The maximum number of iterations to use estimating random numbers before resorting to \code{uniroot} (which is slower).
-#' @param pMinus An amount to subtract from the distribution function in \code{pfossil} (used for root-finding in \code{rfossil} and \code{qfossil}).
+#' @param pMinus An amount to subtract from the distribution function in \code{pcutt} (used for root-finding in \code{rcutt} and \code{qcutt}).
 #'
 #' @details 
 #' Given an extinction time \code{theta}, an upper limit \code{K} for the possible age of a fossil
@@ -28,37 +28,37 @@
 #' \deqn{C\left[(w-\theta)\Phi\left(\frac{w-\theta}{\sigma}\right)+\sigma^2\phi\left(\frac{w-\theta}{\sigma}\right)\right]}
 #' where \eqn{C^{-1} = (K-\theta)\Phi\left(\frac{K-\theta}{\sigma}\right)+\sigma^2\phi\left(\frac{K-\theta}{\sigma}\right)}. 
 #' 
-#' @return \code{dfossil} gives the density, \code{pfossil} gives the distribution function, \code{qnorm} 
-#' gives the quantile function, and \code{rfossil} generates random fossil dates.
+#' @return \code{dcutt} gives the density, \code{pcutt} gives the distribution function, \code{qnorm} 
+#' gives the quantile function, and \code{rcutt} generates random fossil dates.
 #' 
-#' The length of the result is determined by \code{n} for \code{rfossil}, and in other cases, by the length of the first argument.
+#' The length of the result is determined by \code{n} for \code{rcutt}, and in other cases, by the length of the first argument.
 #' \code{sd} can also be a vector but if its not length does not match that expected by the first argument it is cycled through until the desired
 #' length is reached, with a warning.
 
-##' @rdname fossil
+##' @rdname cutt
 ##' @export
 #' @examples
-#' ages = rfossil(20, 10000, 25000, 1000) # simulate some random data
-#' pfossil(ages, 10000, 25000, 1000) # find CDF of each value (approx uniform)
-#' qfossil(c(0.25,0.75), 10000, 25000, 1000) # find first and third quartiles
+#' ages = rcutt(20, 10000, 25000, 1000) # simulate some random data
+#' pcutt(ages, 10000, 25000, 1000) # find CDF of each value (approx uniform)
+#' qcutt(c(0.25,0.75), 10000, 25000, 1000) # find first and third quartiles
 #'
 #' # plot the density function
 #' w = seq(5000,26000,length=1000)
-#' plot(w,dfossil(w,10000,25000,1000),type="l",ylab="pdf(w)")
+#' plot(w,dcutt(w,10000,25000,1000),type="l",ylab="pdf(w)")
 #' # compare to density if measurement error came from t(4) distribution
-#' plot(w,dfossil(w,10000,25000,1000,df=4),type="l",ylab="pdf(w,df=4)")
-#' @aliases fossil rfossil dfossil pfossil qfossil
-rfossil = function(n, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=50)
+#' plot(w,dcutt(w,10000,25000,1000,df=4),type="l",ylab="pdf(w,df=4)")
+#' @aliases cutt rcutt dcutt pcutt qcutt
+rcutt = function(n, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=50)
 {
   if(length(n)>1) stop("'n' must be scalar")
   sdVec = checkParams(n, theta, K, df, sd)
-  w = qfossil(p=runif(n), theta=theta, K=K, sd=sdVec, df=df, tol=tol, nIter=nIter)
+  w = qcutt(p=runif(n), theta=theta, K=K, sd=sdVec, df=df, tol=tol, nIter=nIter)
   return(w)
 }
 
-##' @rdname fossil
+##' @rdname cutt
 ##' @export
-qfossil = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=50)
+qcutt = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=50)
 {
   # sort out the dimensions of inputs
   nP = length(p)
@@ -101,13 +101,13 @@ qfossil = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIte
     iter         = iter+1
   }
   
-  # in the occasional odd case this might not converge, in which case try using uniroot on cdf function pfossil
+  # in the occasional odd case this might not converge, in which case try using uniroot on cdf function pcutt
   if(iter==nIter)
   {
     for(iObs in which(isDiff))
     {
       eCrit = ifelse(is.null(df), qnorm(p[iObs]/2), qt(p[iObs]/2,df) )
-      qTry = try( uniroot( pfossil, interval=c(theta+sdVec[iObs]*eCrit,K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,df=df,pMinus=p[iObs],extendInt="upX") )
+      qTry = try( uniroot( pcutt, interval=c(theta+sdVec[iObs]*eCrit,K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,df=df,pMinus=p[iObs],extendInt="upX") )
 
             if(inherits(qTry,"try-error")==FALSE)
       {
@@ -120,9 +120,9 @@ qfossil = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIte
   return(q)
 }
 
-##' @rdname fossil
+##' @rdname cutt
 ##' @export
-pfossil = function(q,theta,K,sd,df=NULL,lower.tail=TRUE,pMinus=0)
+pcutt = function(q,theta,K,sd,df=NULL,lower.tail=TRUE,pMinus=0)
 # function to compute marginal cdf of epsilon, minus u, to solve for eps
 {
   # sort out the dimensions of inputs
@@ -146,9 +146,9 @@ pfossil = function(q,theta,K,sd,df=NULL,lower.tail=TRUE,pMinus=0)
   return(cdf)
 }
 
-##' @rdname fossil
+##' @rdname cutt
 ##' @export
-dfossil = function(x,theta,K,sd,df=NULL,log=FALSE)
+dcutt = function(x,theta,K,sd,df=NULL,log=FALSE)
 # function to compute marginal cdf of epsilon, minus u, to solve for eps
 {
   # sort out the dimensions of inputs
@@ -200,7 +200,7 @@ checkParams = function(n,theta,K,df,sd)
   return(sdVec)
 }
 
-# define measurement error distribution function F(e) and integral of ef(e), used to compute fossil CDF
+# define measurement error distribution function F(e) and integral of ef(e), used to compute cutt CDF
 getDFs = function(df,sd)
 {
   if(all(sd==0)) # if all sds are zero then returns 1 for CDF and 0 for pdf
