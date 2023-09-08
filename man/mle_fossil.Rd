@@ -75,3 +75,6 @@ mle_fossil(ages, sd=1000, K=25000, alpha=0.05)
 # get the MLE only
 mle_fossil(ages, sd=1000, K=25000, alpha=NULL) 
 }
+\seealso{
+rfossil
+}

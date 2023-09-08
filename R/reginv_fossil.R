@@ -13,11 +13,12 @@
 #' @param alpha Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals)
 #' @param q Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,0.5,1-alpha/2)},
 #' which gives the limits of a 100(1-\code{alpha})\% confidence interval and a point estimate obtained by solving at 0.5. If \code{q} is specified it overrides any input for \code{alpha}.
-#' @param paramInits A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 20 values evenly distributed within 5 SEs of the MLE.
+#' @param paramInits A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 100 values evenly distributed within 5 SEs of the estimate from \code{\link{mle_fossil}}.
 #' @param iterMax Maximum number of simulated datasets to use to estimate extinction time (default 500).
 #' @param method Regression method to use in estimating how MLE quantiles vary with extinction time, using a dataset of simulated MLEs and the extinction times at which they were simulated.
 #'  \code{method='rq'} (default) uses linear quantile regression, \code{method='rq2'} uses quadratic quantile regression, \code{method='wrq'} uses linear quantile regression but down-weighting 
 #'  high influence points, \code{method='prob'} uses linear probit regression on an indicator variable for whether or not simulated MLEs exceeds the observed MLE.
+#'  \code{method='lm'} uses a linear regression, which is appropriate for bias correction rather than confidence interval estimation. In this case \code{q} and \code{alpha} are ignored and only a point estimate is returned.
 #'
 #' @details 
 #' Given a vector of fossil ages \code{ages} and corresponding measurement error standard deviations \code{sd}, and an upper limit \code{K} for the possible age of a fossil
@@ -39,7 +40,11 @@
 #'
 #'  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
 #'  \item{q}{ the vector of quantiles used in estimation.}
+#'  \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
+#'  \item{iter}{ the number of iterations taken to estimate this value}
+#'  \item{converged}{ whether or not this converged, at the specified tolerance}
 #'  \item{call }{ the function call}
+#' @seealso mle_fossil, rfossil
 #' @export
 #' @examples
 #' ages = rfossil(20, 10000, K=25000, sd=1000) #simulating some random data
@@ -55,13 +60,20 @@
 reginv_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
 {  
   
+  # if method="lm" we just want a point estimate
+  if(method=="lm")
+  {
+    q=0.5
+    names(q)="theta"
+  }
+
   # set up result list.
   theta = rep(NA,length(q))
   if(is.null(names(q)))
     names(theta)=paste0("q=",q)
   else
     names(theta)=names(q)
-  result=list(theta=theta,q=q)
+  result=list(theta=theta,q=q,error=theta,iter=theta,converged=theta)
   
   # if paramInits provided, get data and test stats for initial parameters just once
   n <- length(ages)
@@ -85,17 +97,25 @@ reginv_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,0.5,1-alp
       ft.mle = mle_fossil(ages=ages, sd=sd, K=K, df=df, q=q[iQ])
       is_SE_OK = any(sd==0) | is.nan(ft.mle$se) | is.infinite(ft.mle$se)
       stepSize = ifelse( is_SE_OK, IQR(ages)*0.1, ft.mle$se )
-      paramInits = ft.mle$ci[1] + stepSize*seq(-5,5,length=100) 
+      if(ft.mle$ci[1]+5*stepSize>K) #make sure paramInits don't exceed K
+        paramInits = seq( ft.mle$ci[1] -5* stepSize, K, length=100) 
+      else
+        paramInits = ft.mle$ci[1] + stepSize*seq(-5,5,length=100) 
       stats = NULL
     }
     # call reginv
-    result$theta[[iQ]] = reginv(ages,getT=getThMLE,simulateData=simFn_fossil,paramInits=paramInits,
-                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, method=method,stats=stats)$theta
+    resulti = reginv(ages,getT=getThMLE,simulateData=simFn_fossil,paramInits=paramInits,
+                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, method=method,stats=stats)
+    result$theta[[iQ]] = resulti$theta
+    result$error[[iQ]] = resulti$error
+    result$iter[[iQ]]  = resulti$iter
+    result$converged[[iQ]]  = resulti$converged
   }
   result$call <- match.call()
   class(result)="reginv"
   return(result)
 }
+
 
 simFn_fossil = function (theta, K, sd, df, n=length(sd))
 {

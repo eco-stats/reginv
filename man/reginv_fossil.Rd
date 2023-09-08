@@ -31,19 +31,23 @@ close to the age of the oldest fossil.}
 \item{q}{Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,0.5,1-alpha/2)},
 which gives the limits of a 100(1-\code{alpha})\% confidence interval and a point estimate obtained by solving at 0.5. If \code{q} is specified it overrides any input for \code{alpha}.}
 
-\item{paramInits}{A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 20 values evenly distributed within 5 SEs of the MLE.}
+\item{paramInits}{A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 100 values evenly distributed within 5 SEs of the estimate from \code{\link{mle_fossil}}.}
 
 \item{iterMax}{Maximum number of simulated datasets to use to estimate extinction time (default 500).}
 
 \item{method}{Regression method to use in estimating how MLE quantiles vary with extinction time, using a dataset of simulated MLEs and the extinction times at which they were simulated.
 \code{method='rq'} (default) uses linear quantile regression, \code{method='rq2'} uses quadratic quantile regression, \code{method='wrq'} uses linear quantile regression but down-weighting 
-high influence points, \code{method='prob'} uses linear probit regression on an indicator variable for whether or not simulated MLEs exceeds the observed MLE.}
+high influence points, \code{method='prob'} uses linear probit regression on an indicator variable for whether or not simulated MLEs exceeds the observed MLE.
+\code{method='lm'} uses a linear regression, which is appropriate for bias correction rather than confidence interval estimation. In this case \code{q} and \code{alpha} are ignored and only a point estimate is returned.}
 }
 \value{
 This function returns an object of class "reginv" with the following components:
 
  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
  \item{q}{ the vector of quantiles used in estimation.}
+ \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
+ \item{iter}{ the number of iterations taken to estimate this value}
+ \item{converged}{ whether or not this converged, at the specified tolerance}
  \item{call }{ the function call}
 }
 \description{
@@ -78,4 +82,7 @@ reginv_fossil(ages=ages, sd=1000, K=25000, alpha=0.05)
 # be narrower and have poorer coverage (they miss the true value too often
 # when n or sd is small):
 mle_fossil(ages=ages, sd=1000, K=25000, alpha=0.05) 
+}
+\seealso{
+mle_fossil, rfossil
 }

@@ -35,6 +35,7 @@
 #' It is assumed that \code{ages} has been specified with smaller values representing more recent specimens, for example, \code{ages} could be specified in years before present.
 #' If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens. 
 #' 
+#' @seealso rfossil
 #' @return This function returns an object of class "mle_fossil" with the following components:
 #'
 #'  \item{theta}{ a maximum likelihood estimator of \code{theta}.}
