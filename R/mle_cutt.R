@@ -92,15 +92,15 @@ mle_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,1-alpha/2), wa
     else
     {
       nQ = length(q)
-      q2Tail      = 2*min(q,1-q)
+      q2Tail      = 2*pmin(q,1-q)
       # set search limits so that we look above MLE if q>0.5 and below otherwise 
-#     is_SE_bad   = is.nan(SE) | is.infinite(SE) | SE==0
-#     searchLim   = ifelse( is_SE_bad, IQR(ages)*0.5, SE*5 )
-      qLo = qHi   = rep(thetaMLE$par,nQ)
-#     qLo[q<=0.5] = thetaMLE$par-searchLim
-#     qHi[q>=0.5] = min(thetaMLE$par+searchLim,K)
-      qLo[q<=0.5] = thetaMLE$par*0.25
-      qHi[q>=0.5] = min(thetaMLE$par*1.25,K)
+     is_SE_bad   = is.nan(SE) | is.infinite(SE) | SE==0
+     searchLim   = ifelse( is_SE_bad, IQR(ages)*0.5, SE*5 )
+     qLo = qHi   = rep(thetaMLE$par,nQ)
+     qLo[q<=0.5] = thetaMLE$par-searchLim
+     qHi[q>=0.5] = min(thetaMLE$par+searchLim,K)
+#      qLo[q<=0.5] = thetaMLE$par*0.25
+#      qHi[q>=0.5] = min(thetaMLE$par*1.25,K)
       # note LRT function is increasing for q>0.5 
       dir         = rep("downX",nQ)
       dir[q>=0.5] ="upX"
