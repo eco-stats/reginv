@@ -8,7 +8,7 @@
 #' @param paramInits A vector of initial values of \code{theta} to try. Must have at least two unique values in it, but this algorithm is more stable if you give it a dozen or so.
 #' @param q A scalar value between 0 and 1 specifying the quantile at which we want to solve for \code{theta}. Defaults to \code{0.5}
 #' @param iterMax Maximum number of values of \code{theta} to generate new test statistics at.
-#' @param eps Convergence tolerance for \code{theta}, defaults to \code{1.e-5}.
+#' @param eps Convergence tolerance for \code{theta} (relative to absolute size of \code{theta}), defaults to \code{1.e-6}.
 #' @param method The regression method employed for inversion. \code{'rq'} (default) uses quantile linear regression, \code{'rq2'} uses quantile quadratic regression,
 #' \code{'wrq'} downweights influential values before using quantile linear regression, \code{'prob'} uses probit linear regression on an indicator variable for whether or not the observed test statistic \code{getT(data)} has been exceeded.
 #' @param a A scalar value determining where to simulate the next value of \code{theta} at, relative to our best current estimate of it. \code{a=0} (default) simulates the next statistic at our current best estimate of \code{theta},
@@ -21,10 +21,12 @@
 #' Then this function is called inside \code{simFn}, which in effect makes the simulation model a function of \code{theta} only.
 #' 
 #' @return This function returns an object of class "reginv" with the following components:
-#'
 #'  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
-#'  \item{B}{ a vector containing the number of Monte Carlo samples used to estimate each \code{theta}.}
-#'  \item{q}{ the quantile used in estimation.}
+#'  \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
+#'  \item{iter}{ the number of iterations taken to estimate each value}
+#'  \item{converged}{ whether or not this converged, at the specified tolerance, for each value. }
+#'  \item{stats}{ a data frame containing the values of \code{theta} at which we simulated, the test statistics (\code{T}), and the current best estimate of \eqn{theta}{t} (\code{thetaEst}). }
+#'  \item{fit}{ the fitted model for \code{T} as a function of \code{theta}. }
 #'  \item{call }{ the function call}
 #' @examples
 #' # Find the lower 2.5% confidence bound on the variance for a
@@ -43,7 +45,7 @@
 #' @export
 #' @import stats
 #' @importFrom quantreg rq
-reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps=1.e-5, method="rq", a=0, stats = NULL, ...)
+reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps=1.e-6, method="rq", a=0, stats = NULL, ...)
 {
   t_obs = getT(data, ...)
   
@@ -59,14 +61,10 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
     names(stats)=c("theta","T","thetaEst")
   }
   
-  # define getPred and getErr functions (to avoid repeated if statements in estimation)
+  # define getErr functions (to avoid repeated if statements in estimation)
   if(method=="rq"||method=="wrq"||method=="rq2")
   {
     q = 1-q # flipping quantile is needed when using this approach
-    getPred = function(newtheta,qfit,t_obs,q)
-    {
-      return(predict(qfit,newdata=list(theta=newtheta))-t_obs)
-    }
     getErr = function(newtheta,qfit,t_obs,q) # getting the SE of predictions 
     {
       prEst = try(predict(qfit,newdata=list(theta=newtheta),interval="confidence"),silent=TRUE)
@@ -85,10 +83,6 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
   }
   else
   {
-    getPred = function(newtheta,qfit,t_obs,q)
-    {
-      return(predict(qfit,newdata=list(theta=newtheta),type="response")-q)
-    }
     getErr = function(newtheta,qfit,t_obs,q)
     {
       if(coef(qfit)[2]>0) # find the value matching to observed t if decent fit
@@ -103,7 +97,7 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
   }
   
   iter = dim(stats)[1]
-  res = updateTheta(stats, t_obs, q, method=method, getPred=getPred)
+  res = updateTheta(stats, t_obs, q, method=method)
   isConverged = FALSE
   while(isConverged == FALSE & iter<iterMax)
   {
@@ -119,7 +113,7 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
       Titer = getT(newDat, ...)
     }
     stats = rbind(stats, c(theta=thetaNew, T=Titer, thetaEst=res$theta) )
-    res = updateTheta(stats, t_obs, q, qfit=res$qfit, method=method, getPred=getPred)
+    res = updateTheta(stats, t_obs, q, qfit=res$qfit, method=method)
     err = getErr(res$theta,res$qfit,t_obs,q) / abs(res$theta)
     isConverged = err < eps
   }
@@ -129,7 +123,7 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
   return(result)
 }
 
-updateTheta = function(stats,t_obs,q,qfit=NULL,method="rq",getPred=getPred,screenStats=NULL)
+updateTheta = function(stats,t_obs,q,qfit=NULL,method="rq",screenStats=NULL)
   # dat is a dataframe containing theta and T (parameter and statistic)
 {
   if(method=="wrq")
@@ -148,6 +142,7 @@ updateTheta = function(stats,t_obs,q,qfit=NULL,method="rq",getPred=getPred,scree
                 "rq2" = quantreg::rq(T~poly(theta,2,raw=TRUE),tau=q,data=stats), #consider varying rq method, "fn" or "pfn"
                 #           "qgam" = qgam::qgam(T~s(theta), qu=q, data=stats),
                 "wrq" = quantreg::rq(T~theta,tau=q,weights=wt,data=stats),
+                "lm" = lm(T~theta,data=stats),
                 glm(I(T>t_obs)~theta,family=binomial("probit"),data=stats)
     )
   }
@@ -200,8 +195,9 @@ getThetaSim = function(iter,thetaEst,thetaSims,a)
   # a tells us how much to weight mean of all obs compared to current obs
   thetaNew = (a*iter+1-a)*thetaEst - a*sum(thetaSims)
   # put bounds on thetaNew so no crazy shit
-  if(a>0) thetaNext = noOutliers(thetaNew,thetaSims)
-  thetaNext=thetaNew
+  #  if(a>0) 
+    thetaNext = noOutliers(thetaNew,thetaSims)
+  # thetaNext=thetaNew
   return(thetaNext)
 }
 noOutliers = function(thetaNew,thetas)

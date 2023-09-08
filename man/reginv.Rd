@@ -11,7 +11,7 @@ reginv(
   q = 0.5,
   paramInits,
   iterMax = 1000,
-  eps = 1e-05,
+  eps = 1e-06,
   method = "rq",
   a = 0,
   stats = NULL,
@@ -31,7 +31,7 @@ reginv(
 
 \item{iterMax}{Maximum number of values of \code{theta} to generate new test statistics at.}
 
-\item{eps}{Convergence tolerance for \code{theta}, defaults to \code{1.e-5}.}
+\item{eps}{Convergence tolerance for \code{theta} (relative to absolute size of \code{theta}), defaults to \code{1.e-6}.}
 
 \item{method}{The regression method employed for inversion. \code{'rq'} (default) uses quantile linear regression, \code{'rq2'} uses quantile quadratic regression,
 \code{'wrq'} downweights influential values before using quantile linear regression, \code{'prob'} uses probit linear regression on an indicator variable for whether or not the observed test statistic \code{getT(data)} has been exceeded.}
@@ -45,10 +45,12 @@ reginv(
 }
 \value{
 This function returns an object of class "reginv" with the following components:
-
  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
- \item{B}{ a vector containing the number of Monte Carlo samples used to estimate each \code{theta}.}
- \item{q}{ the quantile used in estimation.}
+ \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
+ \item{iter}{ the number of iterations taken to estimate each value}
+ \item{converged}{ whether or not this converged, at the specified tolerance, for each value. }
+ \item{stats}{ a data frame containing the values of \code{theta} at which we simulated, the test statistics (\code{T}), and the current best estimate of \eqn{theta}{t} (\code{thetaEst}). }
+ \item{fit}{ the fitted model for \code{T} as a function of \code{theta}. }
  \item{call }{ the function call}
 }
 \description{

@@ -1,22 +1,25 @@
 #' Confidence Interval for Extinction Time using regression inversion
 #'
 #' Estimates a confidence interval for extinction time using regression inversion, which finds a range of values for extinction time that
-#' are plausible considering the maximum likelihood estimator of the most recently observed fossil, accounting for sampling error (the fact that
-#' the most recent fossil date is not necessarily the most recent time that the species was extant) and measurement error (error dating fossils).
+#' are plausible considering the maximum likelihood estimator of the most recently observed fossil. This is done assuming fossil dates come from a
+#' a compound uniform-truncated T distribution, which accounts for sampling error (the fact that the most recent fossil date is not necessarily
+#' the most recent time that the species was extant) and measurement error (error dating fossils).
 #' Usually takes a few seconds to run, because it is doing a lot of computation behind the scenes. 
 #'
 #' @param ages Numeric vector of fossil ages, with smaller values being more recent fossil ages.
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 #' close to the age of the oldest fossil.
+#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (NULL) uses a Gaussian distribution.
 #' @param alpha Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals)
 #' @param q Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,0.5,1-alpha/2)},
 #' which gives the limits of a 100(1-\code{alpha})\% confidence interval and a point estimate obtained by solving at 0.5. If \code{q} is specified it overrides any input for \code{alpha}.
-#' @param paramInits A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 20 values evenly distributed within 5 SEs of the MLE.
+#' @param paramInits A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 100 values evenly distributed within 5 SEs of the estimate from \code{\link{mle_cutt}}.
 #' @param iterMax Maximum number of simulated datasets to use to estimate extinction time (default 500).
 #' @param method Regression method to use in estimating how MLE quantiles vary with extinction time, using a dataset of simulated MLEs and the extinction times at which they were simulated.
 #'  \code{method='rq'} (default) uses linear quantile regression, \code{method='rq2'} uses quadratic quantile regression, \code{method='wrq'} uses linear quantile regression but down-weighting 
 #'  high influence points, \code{method='prob'} uses linear probit regression on an indicator variable for whether or not simulated MLEs exceeds the observed MLE.
+#'  \code{method='lm'} uses a linear regression, which is appropriate for bias correction rather than confidence interval estimation. In this case \code{q} and \code{alpha} are ignored and only a point estimate is returned.
 #'
 #' @details 
 #' Given a vector of fossil ages \code{ages} and corresponding measurement error standard deviations \code{sd}, and an upper limit \code{K} for the possible age of a fossil
@@ -38,62 +41,97 @@
 #'
 #'  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
 #'  \item{q}{ the vector of quantiles used in estimation.}
+#'  \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
+#'  \item{iter}{ the number of iterations taken to estimate this value}
+#'  \item{converged}{ whether or not this converged, at the specified tolerance}
 #'  \item{call }{ the function call}
+#' @seealso mle_cutt, rcutt
 #' @export
 #' @examples
-#' ages = rfossil(20, 10000, K=25000, sd=1000) #simulating some random data
+#' ages = rcutt(20, 10000, K=25000, sd=1000) #simulating some random data
 #' 
 #' # for a point estimate together with a 95% CI
-#' reginv_fossil(ages=ages, sd=1000, K=25000, alpha=0.05) 
+#' reginv_cutt(ages=ages, sd=1000, K=25000, alpha=0.05) 
 #' 
 #' # compare to estimates using asymptotic likelihood inference, which tend to
 #' # be narrower and have poorer coverage (they miss the true value too often
 #' # when n or sd is small):
-#' mle_fossil(ages=ages, sd=1000, K=25000, alpha=0.05) 
+#' mle_cutt(ages=ages, sd=1000, K=25000, alpha=0.05) 
 
-reginv_fossil = function(ages, sd, K, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
+reginv_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
 {  
-  # get paramInits, if not provided
-  if(is.null(paramInits))
-  {
-    ft.mle = mle_fossil(ages=ages, sd=sd, K=K, alpha=NULL)
-    stepSize = max(ft.mle$se, IQR(ages)*0.1, na.rm=TRUE)
-    paramInits = ft.mle$theta + stepSize*seq(-5,5,length=20)
-  }
   
+  # if method="lm" we just want a point estimate
+  if(method=="lm")
+  {
+    q=0.5
+    names(q)="theta"
+  }
+
   # set up result list.
   theta = rep(NA,length(q))
   if(is.null(names(q)))
     names(theta)=paste0("q=",q)
   else
     names(theta)=names(q)
+  result=list(theta=theta,q=q,error=theta,iter=theta,converged=theta)
   
+  # if paramInits provided, get data and test stats for initial parameters just once
   n <- length(ages)
-  result=list(theta=theta,q=q)
+  stats=data.frame(theta=NULL,T=NULL,thetaEst=NULL)
+  if(is.null(paramInits)==FALSE)
+  {
+    for(i in 1:length(paramInits) )
+    {
+      newDat = simFn_cutt(theta=paramInits[i],K=K,sd=sd,df=df,n=n)
+      stats = rbind(stats, c(theta=paramInits[i], T = getThMLE(newDat, K=K,sd=sd,df=df,n=n), thetaEst=paramInits[i]) )
+    }      
+    names(stats)=c("theta","T","thetaEst")
+  }
+
+  # get results for each value of q
   for (iQ in 1:length(q)) {
-    result$theta[[iQ]] = reginv(ages,getT=getThMLE,simulateData=simFn_fossil,paramInits=paramInits,
-                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, n=n, method=method)$theta
+
+    # get paramInits, if not provided
+    if(is.null(paramInits))
+    {
+      ft.mle = mle_cutt(ages=ages, sd=sd, K=K, df=df, q=q[iQ])
+      is_SE_bad = is.nan(ft.mle$se) | is.infinite(ft.mle$se) | ft.mle$se==0
+      stepSize = ifelse( is_SE_bad, IQR(ages)*0.1, ft.mle$se )
+      if(ft.mle$ci[1]+5*stepSize>K) #make sure paramInits don't exceed K
+        paramInits = seq( ft.mle$ci[1] -5* stepSize, K, length=100) 
+      else
+        paramInits = ft.mle$ci[1] + stepSize*seq(-5,5,length=100) 
+      stats = NULL
+    }
+    # call reginv
+    resulti = reginv(ages,getT=getThMLE,simulateData=simFn_cutt,paramInits=paramInits,
+                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, method=method,stats=stats)
+    result$theta[[iQ]] = resulti$theta
+    result$error[[iQ]] = resulti$error
+    result$iter[[iQ]]  = resulti$iter
+    result$converged[[iQ]]  = resulti$converged
   }
   result$call <- match.call()
   class(result)="reginv"
   return(result)
 }
 
-simFn_fossil = function (theta, K, sd, n=length(sd))
+
+simFn_cutt = function (theta, K, sd, df, n=length(sd))
 {
   if(theta>K) #trying to game it to push estimates away from K 
     W = rep(theta,n)
   else
-    W = rfossil(theta, K, sd, n=n)
+    W = rcutt(theta, K, sd, df=df, n=n)
   return(W)
 }
 
-getThMLE = function (ages, theta=NULL, K, sd, n=length(ages) )
+getThMLE = function (ages, K, sd, df, n=length(ages) )
 {
-  if(is.null(theta))  theta=min(ages)
   if(all(ages>K))
     theta = min(ages)
   else
-    theta = mle_fossil(ages, sd, K, alpha=NULL )$theta
+    theta = mle_cutt(ages, sd, K, df=df, alpha=NULL )$theta
   return(theta)
 }
