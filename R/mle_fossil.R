@@ -91,18 +91,20 @@ mle_fossil = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,1-alpha/2), 
     }
     else
     {
-      nQ=length(q)
+      nQ = length(q)
+      q2Tail      = 2*min(q,1-q)
       # set search limits so that we look above MLE if q>0.5 and below otherwise 
-      q2Tail = 2*pmin(q,1-q)
-      qLo = qHi = rep(1,nQ)
-      qLo[q<=0.5] = 0.25
-      qHi[q>=0.5] = 1.25
+      is_SE_bad   = is.nan(SE) | is.infinite(SE) | SE==0
+      searchLim   = ifelse( is_SE_bad, IQR(ages)*0.5, SE*5 )
+      qLo = qHi   = rep(thetaMLE$par,nQ)
+      qLo[q<=0.5] = thetaMLE$par-searchLim
+      qHi[q>=0.5] = min(thetaMLE$par+searchLim,K)
       # note LRT function is increasing for q>0.5 
-      dir = rep("downX",nQ)
-      dir[q>=0.5]="upX"
+      dir         = rep("downX",nQ)
+      dir[q>=0.5] ="upX"
       for(iQ in 1:nQ)
       {
-        thLim = try( uniroot(fossil_LRT,thetaMLE$par*c(qLo[iQ],qHi[iQ]),thetaMLE,alpha=q2Tail[iQ], ages=ages,sd=sd,K=K,df=df,extendInt=dir[iQ], ...) )
+        thLim = try( uniroot(fossil_LRT, c(qLo[iQ],qHi[iQ]), thetaMLE, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, df=df, extendInt=dir[iQ], ...) )
         if(inherits(thLim,"try-error"))
           ci[iQ] = thetaMLE$par
         else

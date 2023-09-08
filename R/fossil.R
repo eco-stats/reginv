@@ -65,7 +65,7 @@ qfossil = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIte
   sdVec = checkParams(nP,theta,K,df,sd)
 
   # get functions to compute F(e) and int e(f(e)) for measurement error e
-  funs = getDFs(df)
+  funs = getDFs(df,sd)
   
   # compute C and p/C
   Ksd  = (K-theta)/sdVec
@@ -129,7 +129,7 @@ pfossil = function(q,theta,K,sd,df=NULL,lower.tail=TRUE,pMinus=0)
   sdVec = checkParams(length(q),theta,K,df,sd)
 
   # get functions to compute F(e) and int e(f(e)) for measurement error e
-  funs = getDFs(df)
+  funs = getDFs(df,sd)
   
   # get CDF denominator
   Ksd  = (K-theta)/sdVec
@@ -155,7 +155,7 @@ dfossil = function(x,theta,K,sd,df=NULL,log=FALSE)
   sdVec = checkParams(length(x),theta,K,df,sd)
   
   # get functions to compute F(e) and int e(f(e)) for measurement error e
-  funs = getDFs(df)
+  funs = getDFs(df,sd)
 
   # get CDF denominator
   Ksd  = (K-theta)/sdVec
@@ -201,17 +201,25 @@ checkParams = function(n,theta,K,df,sd)
 }
 
 # define measurement error distribution function F(e) and integral of ef(e), used to compute fossil CDF
-getDFs = function(df)
+getDFs = function(df,sd)
 {
-  if(is.null(df))
+  if(all(sd==0)) # if all sds are zero then returns 1 for CDF and 0 for pdf
   {
-    CDFx  = function(xSD,df,log.p=FALSE){pnorm(xSD, mean = 0, sd = 1, log.p=log.p)}
-    fex  = function(xSD,df){dnorm(xSD, mean = 0, sd = 1)}
+    CDFx = function(xSD,df,log.p=FALSE){ if(log.p) 0 else 1 }
+    fex = function(xSD,df){ 0 }
   }
   else
   {
-    CDFx  = function(xSD,df,log.p=FALSE){ pt( xSD, df, log.p=log.p) }
-    fex  = function(xSD,df){ dt(xSD,df) * df/(df-1) * (1+xSD^2/df) }
+    if(is.null(df))
+    {
+      CDFx  = function(xSD,df,log.p=FALSE){pnorm(xSD, mean = 0, sd = 1, log.p=log.p)}
+      fex  = function(xSD,df){dnorm(xSD, mean = 0, sd = 1)}
+    }
+    else
+    {
+      CDFx  = function(xSD,df,log.p=FALSE){ pt( xSD, df, log.p=log.p) }
+      fex  = function(xSD,df){ dt(xSD,df) * df/(df-1) * (1+xSD^2/df) }
+    }
   }
   return(list(CDF=CDFx,fe=fex))
 }  
