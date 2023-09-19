@@ -1,7 +1,7 @@
 Package: reginv
 Type: Package
 Title: Regression Inversion for Parametric Inference
-Version: 1.4.1
+Version: 1.4.2
 Authors@R: c(
     person("David", "Warton", email = "david.warton@unsw.edu.au", role = c("cre", "aut")),
     person("Victor", "Tsang", email = "victorwctsang@gmail.com", role = c("aut")))

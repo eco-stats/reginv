@@ -10,7 +10,7 @@
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 #' close to the age of the oldest fossil.
-#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (NULL) uses a Gaussian distribution.
+#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (Inf) uses a Gaussian distribution.
 #' @param alpha Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals)
 #' @param q Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,0.5,1-alpha/2)},
 #' which gives the limits of a 100(1-\code{alpha})\% confidence interval and a point estimate obtained by solving at 0.5. If \code{q} is specified it overrides any input for \code{alpha}.
@@ -58,7 +58,7 @@
 #' # when n or sd is small):
 #' mle_cutt(ages=ages, sd=1000, K=25000, alpha=0.05) 
 
-reginv_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
+reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
 {  
   
   # if method="lm" we just want a point estimate

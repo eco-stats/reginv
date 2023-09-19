@@ -9,7 +9,7 @@
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 #' close to the age of the oldest fossil.
 #' @param sd Measurement error standard deviations for fossils. Can be a vector. If not of length \code{n}, it is cycled through repeatedly until length \code{n}.
-#' @param df numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (NULL) uses a Gaussian distribution.
+#' @param df numeric; degrees of freedom for the t-distribution used to model measurement error. Must be greater than 1. Default (Inf) uses a Gaussian distribution.
 #' @param log logical; if TRUE, densities \code{p} are given as \code{log(p)}.
 #' @param lower.tail logical; if TRUE (default), probabilities \code{p} are \eqn{P[X\leq x]}{P(X<=x)} otherwise \eqn{P[X>x]}{P(X>x)}.
 #' @param tol Numerical tolerance (defaults to \code{sqrt(.Machine$double.eps)}
@@ -32,7 +32,7 @@
 #' gives the quantile function, and \code{rcutt} generates random fossil dates.
 #' 
 #' The length of the result is determined by \code{n} for \code{rcutt}, and in other cases, by the length of the first argument.
-#' \code{sd} can also be a vector but if its not length does not match that expected by the first argument it is cycled through until the desired
+#' \code{sd} can also be a vector but if its length does not match that expected by the first argument it is cycled through until the desired
 #' length is reached, with a warning.
 
 ##' @rdname cutt
@@ -48,7 +48,7 @@
 #' # compare to density if measurement error came from t(4) distribution
 #' plot(w,dcutt(w,10000,25000,1000,df=4),type="l",ylab="pdf(w,df=4)")
 #' @aliases cutt rcutt dcutt pcutt qcutt
-rcutt = function(n, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=50)
+rcutt = function(n, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=50)
 {
   if(length(n)>1) stop("'n' must be scalar")
   sdVec = checkParams(n, theta, K, df, sd)
@@ -58,7 +58,7 @@ rcutt = function(n, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=
 
 ##' @rdname cutt
 ##' @export
-qcutt = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=50)
+qcutt = function(p, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=50)
 {
   # sort out the dimensions of inputs
   nP = length(p)
@@ -106,7 +106,7 @@ qcutt = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=
   {
     for(iObs in which(isDiff))
     {
-      eCrit = ifelse(is.null(df), qnorm(p[iObs]/2), qt(p[iObs]/2,df) )
+      eCrit = ifelse(is.finite(df), qt(p[iObs]/2,df), qnorm(p[iObs]/2) )
       qTry = try( uniroot( pcutt, interval=c(theta+sdVec[iObs]*eCrit,K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,df=df,pMinus=p[iObs],extendInt="upX") )
 
             if(inherits(qTry,"try-error")==FALSE)
@@ -122,7 +122,7 @@ qcutt = function(p, theta, K, sd, df=NULL, tol=sqrt(.Machine$double.eps), nIter=
 
 ##' @rdname cutt
 ##' @export
-pcutt = function(q,theta,K,sd,df=NULL,lower.tail=TRUE,pMinus=0)
+pcutt = function(q,theta,K,sd,df=Inf,lower.tail=TRUE,pMinus=0)
 # function to compute marginal cdf of epsilon, minus u, to solve for eps
 {
   # sort out the dimensions of inputs
@@ -148,7 +148,7 @@ pcutt = function(q,theta,K,sd,df=NULL,lower.tail=TRUE,pMinus=0)
 
 ##' @rdname cutt
 ##' @export
-dcutt = function(x,theta,K,sd,df=NULL,log=FALSE)
+dcutt = function(x,theta,K,sd,df=Inf,log=FALSE)
 # function to compute marginal cdf of epsilon, minus u, to solve for eps
 {
   # sort out the dimensions of inputs
@@ -183,10 +183,10 @@ checkParams = function(n,theta,K,df,sd)
 {
   if(length(theta)>1) stop("'theta' must be scalar")
   if(length(K)>1) stop("'K' must be scalar")
-  if(is.null(df)==FALSE)
+  if(is.finite(df))
   {
     if(length(df)>1) stop("'df' must be scalar")
-    if(df<2) stop("'df' must be at least 2")
+    if(df<=1) stop("'df' must be larger than 1")
   }
   #ensure sds is the right length
   sdVec=sd #return this if sd has length n
@@ -210,15 +210,15 @@ getDFs = function(df,sd)
   }
   else
   {
-    if(is.null(df))
-    {
-      CDFx  = function(xSD,df,log.p=FALSE){pnorm(xSD, mean = 0, sd = 1, log.p=log.p)}
-      fex  = function(xSD,df){dnorm(xSD, mean = 0, sd = 1)}
-    }
-    else
+    if(is.finite(df))
     {
       CDFx  = function(xSD,df,log.p=FALSE){ pt( xSD, df, log.p=log.p) }
       fex  = function(xSD,df){ dt(xSD,df) * df/(df-1) * (1+xSD^2/df) }
+    }
+    else
+    {
+      CDFx  = function(xSD,df,log.p=FALSE){pnorm(xSD, mean = 0, sd = 1, log.p=log.p)}
+      fex  = function(xSD,df){dnorm(xSD, mean = 0, sd = 1)}
     }
   }
   return(list(CDF=CDFx,fe=fex))
