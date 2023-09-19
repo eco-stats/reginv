@@ -8,13 +8,13 @@
 \alias{qcutt}
 \title{The Compound Uniform-Truncated T (CUTT) Distribution for Fossil Dates}
 \usage{
-rcutt(n, theta, K, sd, df = NULL, tol = sqrt(.Machine$double.eps), nIter = 50)
+rcutt(n, theta, K, sd, df = Inf, tol = sqrt(.Machine$double.eps), nIter = 50)
 
-qcutt(p, theta, K, sd, df = NULL, tol = sqrt(.Machine$double.eps), nIter = 50)
+qcutt(p, theta, K, sd, df = Inf, tol = sqrt(.Machine$double.eps), nIter = 50)
 
-pcutt(q, theta, K, sd, df = NULL, lower.tail = TRUE, pMinus = 0)
+pcutt(q, theta, K, sd, df = Inf, lower.tail = TRUE, pMinus = 0)
 
-dcutt(x, theta, K, sd, df = NULL, log = FALSE)
+dcutt(x, theta, K, sd, df = Inf, log = FALSE)
 }
 \arguments{
 \item{n}{Number of observations (numeric)}
@@ -26,7 +26,7 @@ close to the age of the oldest fossil.}
 
 \item{sd}{Measurement error standard deviations for fossils. Can be a vector. If not of length \code{n}, it is cycled through repeatedly until length \code{n}.}
 
-\item{df}{numeric; degrees of freedom for the t-distribution used to model measurement error. Must be at least 2. Default (NULL) uses a Gaussian distribution.}
+\item{df}{numeric; degrees of freedom for the t-distribution used to model measurement error. Must be greater than 1. Default (Inf) uses a Gaussian distribution.}
 
 \item{tol}{Numerical tolerance (defaults to \code{sqrt(.Machine$double.eps)}}
 
@@ -47,7 +47,7 @@ close to the age of the oldest fossil.}
 gives the quantile function, and \code{rcutt} generates random fossil dates.
 
 The length of the result is determined by \code{n} for \code{rcutt}, and in other cases, by the length of the first argument.
-\code{sd} can also be a vector but if its not length does not match that expected by the first argument it is cycled through until the desired
+\code{sd} can also be a vector but if its length does not match that expected by the first argument it is cycled through until the desired
 length is reached, with a warning.
 }
 \description{
