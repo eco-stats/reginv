@@ -11,7 +11,7 @@
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 #' close to the age of the oldest fossil.
 #' @param sd Measurement error standard deviations for fossils. Can be a vector. If not of length \code{n}, it is cycled through repeatedly until length \code{n}.
-#' @param df numeric; degrees of freedom for the t-distribution used to model measurement error. Must be greater than 2. Default (Inf) uses a Gaussian distribution.
+#' @param df numeric; degrees of freedom for the t-distribution used to model measurement error. Must be greater than 1. Default (Inf) uses a Gaussian distribution.
 #' @param log logical; if TRUE, densities \code{p} are given as \code{log(p)}.
 #' @param lower.tail logical; if TRUE (default), probabilities \code{p} are \eqn{P[X\leq x]}{P(X<=x)} otherwise \eqn{P[X>x]}{P(X>x)}.
 #' @param tol Numerical tolerance (defaults to \code{sqrt(.Machine$double.eps)}
@@ -185,12 +185,10 @@ checkParams = function(n,theta,K,df,sd)
 {
   if(length(theta)>1) stop("'theta' must be scalar")
   if(length(K)>1) stop("'K' must be scalar")
-  sdMult = 1
   if(is.finite(df))
   {
     if(length(df)>1) stop("'df' must be scalar")
-    if(df<=2) stop("'df' must be larger than 2")
-#    sdMult = sqrt((df-2)/df) # multiplier for sd so variance doesn't change with df
+    if(df<=1) stop("'df' must be larger than 1")
   }
   #ensure sds is the right length
   sdVec=sd #return this if sd has length n
@@ -201,7 +199,7 @@ checkParams = function(n,theta,K,df,sd)
     sdVec = rep(sd,length=n)
     warning("length of 'sd' is not equal to length of first argument so will extend 'sd' as needed.")
   }
-  return( sdVec*sdMult ) 
+  return( sdVec ) 
 }
 
 # define measurement error distribution function F(e) and integral of ef(e), used to compute cutt CDF

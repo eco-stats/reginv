@@ -26,7 +26,7 @@ close to the age of the oldest fossil.}
 
 \item{sd}{Measurement error standard deviations for fossils. Can be a vector. If not of length \code{n}, it is cycled through repeatedly until length \code{n}.}
 
-\item{df}{numeric; degrees of freedom for the t-distribution used to model measurement error. Must be greater than 2. Default (Inf) uses a Gaussian distribution.}
+\item{df}{numeric; degrees of freedom for the t-distribution used to model measurement error. Must be greater than 1. Default (Inf) uses a Gaussian distribution.}
 
 \item{tol}{Numerical tolerance (defaults to \code{sqrt(.Machine$double.eps)}}
 

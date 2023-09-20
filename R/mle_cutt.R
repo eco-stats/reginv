@@ -8,7 +8,7 @@
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 #' close to the age of the oldest fossil.
-#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Set to NULL to estimate degrees of freedom from the data. If a number, must be greater than 2. Default (Inf) uses a Gaussian distribution.
+#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Set to NULL to estimate degrees of freedom from the data. If a number, must be greater than 1. Default (Inf) uses a Gaussian distribution.
 #' @param alpha Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals).
 #'  If \code{alpha=NULL}, returns a maximum likelihood estimator only.
 #' @param q Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,1-alpha/2)},
@@ -171,14 +171,14 @@ getJointMLE = function(ages, theta=min(ages), sd, K, df=4, nIter=10, tol=1.e-5 )
   return(MLE)
 }
 
-getDF = function( ages, theta, sd, K, dfInvInit=1/4 )
+getDF = function( ages, theta, sd, K, dfInvInit=1/4, dfMin=2 )
 {
   if(all(sd==0))
     res = list( par=Inf, value=length(ages)*log(1/(K-min(ages))) )
   else
   {
     dfInv = optim( dfInvInit, cutt_LogLikT, ages=ages, sd=sd, theta=theta, K=K, method="Brent", 
-                   lower=0.005, upper=0.5-sqrt(.Machine$double.eps), control=list(trace=TRUE,fnscale=-1) )
+                   lower=0.005, upper=1/dfMin-sqrt(.Machine$double.eps), control=list(trace=TRUE,fnscale=-1) )
     res = list(par=1/dfInv$par,value=dfInv$value)
   }
   return(res)
