@@ -8,7 +8,7 @@
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 #' close to the age of the oldest fossil.
-#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Must greater than 2. Default (Inf) uses a Gaussian distribution.
+#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Set to NULL to estimate degrees of freedom from the data. If a number, must be greater than 2. Default (Inf) uses a Gaussian distribution.
 #' @param alpha Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals).
 #'  If \code{alpha=NULL}, returns a maximum likelihood estimator only.
 #' @param q Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,1-alpha/2)},
@@ -69,12 +69,25 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
     sd   = sd[ages<=K]
     ages = ages[ages<=K]
   }
-  thetaMLE = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
-  SE = 1/sqrt(-thetaMLE$hessian)
-  
+  if(is.null(df))
+  {
+    dfKnown = FALSE
+    mles = getJointMLE(ages=ages, theta=min(ages), sd=sd, K=K)
+    thetaMLE = list(par=mles$par[1])
+    df = 1/mles$par[2]
+    vr = solve(-mles$hessian)
+    SE = if(is.nan(vr[1,1])) 0 else sqrt(vr[1,1])
+  }
+  else
+  {
+    dfKnown = TRUE
+    thetaMLE = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
+    SE = 1/sqrt(-thetaMLE$hessian)
+  }
+
   if(is.null(alpha))
   {
-    result = list(theta=thetaMLE$par, se=SE, call=match.call())
+    result = list(theta=thetaMLE$par, se=SE, df=df, call=match.call())
   }
   else
   {
@@ -94,24 +107,27 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
       nQ = length(q)
       q2Tail      = 2*pmin(q,1-q)
       # set search limits so that we look above MLE if q>0.5 and below otherwise 
-     is_SE_bad   = is.nan(SE) | is.infinite(SE) | SE==0
-     searchLim   = ifelse( is_SE_bad, IQR(ages)*0.5, SE*5 )
-     qLo = qHi   = rep(thetaMLE$par,nQ)
-     qLo[q<=0.5] = thetaMLE$par-searchLim
-     qHi[q>=0.5] = min(thetaMLE$par+searchLim,K)
+      is_SE_bad   = is.nan(SE) | is.infinite(SE) | SE==0
+      searchLim   = ifelse( is_SE_bad, IQR(ages)*0.5, SE*5 )
+      qLo = qHi   = rep(thetaMLE$par,nQ)
+      qLo[q<=0.5] = thetaMLE$par-searchLim
+      qHi[q>=0.5] = min(thetaMLE$par+searchLim,K)
       # note LRT function is increasing for q>0.5 
       dir         = rep("downX",nQ)
       dir[q>=0.5] ="upX"
       for(iQ in 1:nQ)
       {
-        thLim = try( uniroot(cutt_LRT, c(qLo[iQ],qHi[iQ]), thetaMLE, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, df=df, extendInt=dir[iQ], ...) )
+        if(dfKnown)
+          thLim = try( uniroot(cutt_LRT, c(qLo[iQ],qHi[iQ]), thetaMLE, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, df=df, extendInt=dir[iQ], ...) )
+        else
+          thLim = try( uniroot(cutt_LRTprofile, c(qLo[iQ],qHi[iQ]), mles, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, extendInt=dir[iQ], ...) )
         if(inherits(thLim,"try-error"))
           ci[iQ] = thetaMLE$par
         else
           ci[iQ] = thLim$root
       }
     }
-    result = list( theta=thetaMLE$par, ci=ci, se=SE, q=q, call=match.call())
+    result = list( theta=thetaMLE$par, ci=ci, se=SE, q=q, df=df, call=match.call())
   }
   class(result)="mle_cutt"
   return( result )
@@ -126,6 +142,48 @@ getThetaMLE = function(ages, theta=min(ages), sd, K, df )
   return(thetaMLE)
 }
 
+getJointMLE = function(ages, theta=min(ages), sd, K, df=4, nIter=10, tol=1.e-5 )
+{
+  if(all(sd==0))
+    MLE = list( par=c(min(ages),Inf), value=length(ages)*log(1/(K-min(ages))), hessian=matrix(-Inf,2,2) )
+  else
+  {
+    iIter = 1
+    cond  = FALSE
+    MLE   = optim(theta, cutt_LogLik, 
+                 ages=ages, sd=sd, K=K, df=df, method="Brent",
+                 lower=-1/sqrt(.Machine$double.eps), upper=K, control=list(trace=TRUE,fnscale=-1))
+    while(cond==FALSE)
+    {
+      pre   = MLE
+      df    = getDF( ages, theta=MLE$par, sd=sd, K=K, dfInvInit=1/df )$par
+      MLE   = optim( pre$par, cutt_LogLik, 
+                   ages=ages, sd=sd, K=K, df=df, method="Brent",
+                   lower=-1/sqrt(.Machine$double.eps), upper=K, control=list(trace=TRUE,fnscale=-1) )
+      eps   = abs(pre$value-MLE$value)
+      cond  = eps<tol | iIter>=nIter
+      iIter = iIter+1
+    }
+    if(eps>tol) MLE$convergence = 1 else MLE$convergence = 0
+    MLE$par = c( MLE$par, 1/df )
+    MLE$hessian = optimHess( MLE$par, cutt_LogLikJoint, ages=ages, sd=sd, K=K, control=list(trace=TRUE,fnscale=-1) )
+  }
+  return(MLE)
+}
+
+getDF = function( ages, theta, sd, K, dfInvInit=1/4 )
+{
+  if(all(sd==0))
+    res = list( par=Inf, value=length(ages)*log(1/(K-min(ages))) )
+  else
+  {
+    dfInv = optim( dfInvInit, cutt_LogLikT, ages=ages, sd=sd, theta=theta, K=K, method="Brent", 
+                   lower=0.005, upper=0.5-sqrt(.Machine$double.eps), control=list(trace=TRUE,fnscale=-1) )
+    res = list(par=1/dfInv$par,value=dfInv$value)
+  }
+  return(res)
+}
+
 cutt_LogLik = function(theta,ages,sd,K,df)
 {
   return(ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=df,log=TRUE)))
@@ -135,4 +193,28 @@ cutt_LRT = function(theta0,thetaMLE,ages, sd, K, df, alpha=0.05)
 {
   ll0=cutt_LogLik(theta0,ages,sd,K,df)
   return(-2*(ll0-thetaMLE$value)-qchisq(1-alpha,1))
+}
+
+cutt_LogLikJoint = function(params,ages,sd,K) #parameters are (theta, dfInv) 
+{
+  if(params[2]>=0.5)
+    ll=sum(dcutt(x=ages,theta=params[1],K=K,sd=sd,df=2+sqrt(.Machine$double.eps),log=TRUE))*(params[2]+0.5) # game it away from df=2
+  else
+    ll=sum(dcutt(x=ages,theta=params[1],K=K,sd=sd,df=1/params[2],log=TRUE))
+  return(ll)
+}
+
+cutt_LogLikT = function(dfInv,ages,sd,theta,K)
+{
+  if(dfInv>=0.5)
+    ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=2+sqrt(.Machine$double.eps),log=TRUE))*(dfInv+0.5) # game it away from df=2
+  else
+    ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=1/dfInv,log=TRUE))
+  return(ll)
+}
+
+cutt_LRTprofile = function(theta0, mles, ages, sd, K, alpha=0.05)
+{
+  ll0  = getDF(ages,theta=theta0, sd=sd, K=K, dfInvInit = mles$par[2])$value
+  return(-2*(ll0-mles$value)-qchisq(1-alpha,1))
 }
