@@ -53,6 +53,7 @@
 
 mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wald=FALSE, ...)
 {  
+  dfMin=1
   nSD = length(sd)
   n = length(ages)
   if(nSD==1) sd = rep(sd,n)
@@ -72,7 +73,7 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
   if(is.null(df))
   {
     dfKnown = FALSE
-    mles = getJointMLE(ages=ages, theta=min(ages), sd=sd, K=K)
+    mles = getJointMLE(ages=ages, theta=min(ages), sd=sd, K=K, dfMin=dfMin)
     thetaMLE = list(par=mles$par[1])
     df = 1/mles$par[2]
     vr = solve(-mles$hessian)
@@ -120,7 +121,7 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
         if(dfKnown)
           thLim = try( uniroot(cutt_LRT, c(qLo[iQ],qHi[iQ]), thetaMLE, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, df=df, extendInt=dir[iQ], ...) )
         else
-          thLim = try( uniroot(cutt_LRTprofile, c(qLo[iQ],qHi[iQ]), mles, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, extendInt=dir[iQ], ...) )
+          thLim = try( uniroot(cutt_LRTprofile, c(qLo[iQ],qHi[iQ]), mles, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, dfMin=dfMin, extendInt=dir[iQ], ...) )
         if(inherits(thLim,"try-error"))
           ci[iQ] = thetaMLE$par
         else
@@ -142,7 +143,7 @@ getThetaMLE = function(ages, theta=min(ages), sd, K, df )
   return(thetaMLE)
 }
 
-getJointMLE = function(ages, theta=min(ages), sd, K, df=4, nIter=10, tol=1.e-5 )
+getJointMLE = function(ages, theta=min(ages), sd, K, df=4, nIter=10, tol=1.e-5, dfMin=1 )
 {
   if(all(sd==0))
     MLE = list( par=c(min(ages),Inf), value=length(ages)*log(1/(K-min(ages))), hessian=matrix(-Inf,2,2) )
@@ -156,7 +157,7 @@ getJointMLE = function(ages, theta=min(ages), sd, K, df=4, nIter=10, tol=1.e-5 )
     while(cond==FALSE)
     {
       pre   = MLE
-      df    = getDF( ages, theta=MLE$par, sd=sd, K=K, dfInvInit=1/df )$par
+      df    = getDF( ages, theta=MLE$par, sd=sd, K=K, dfInvInit=1/df, dfMin=dfMin )$par
       MLE   = optim( pre$par, cutt_LogLik, 
                    ages=ages, sd=sd, K=K, df=df, method="Brent",
                    lower=-1/sqrt(.Machine$double.eps), upper=K, control=list(trace=TRUE,fnscale=-1) )
@@ -166,18 +167,18 @@ getJointMLE = function(ages, theta=min(ages), sd, K, df=4, nIter=10, tol=1.e-5 )
     }
     if(eps>tol) MLE$convergence = 1 else MLE$convergence = 0
     MLE$par = c( MLE$par, 1/df )
-    MLE$hessian = optimHess( MLE$par, cutt_LogLikJoint, ages=ages, sd=sd, K=K, control=list(trace=TRUE,fnscale=-1) )
+    MLE$hessian = optimHess( MLE$par, cutt_LogLikJoint, ages=ages, sd=sd, K=K, dfMin=dfMin, control=list(trace=TRUE,fnscale=-1) )
   }
   return(MLE)
 }
 
-getDF = function( ages, theta, sd, K, dfInvInit=1/4, dfMin=2 )
+getDF = function( ages, theta, sd, K, dfInvInit=1/4, dfMin=1 )
 {
   if(all(sd==0))
     res = list( par=Inf, value=length(ages)*log(1/(K-min(ages))) )
   else
   {
-    dfInv = optim( dfInvInit, cutt_LogLikT, ages=ages, sd=sd, theta=theta, K=K, method="Brent", 
+    dfInv = optim( dfInvInit, cutt_LogLikT, ages=ages, sd=sd, theta=theta, K=K, dfMin=dfMin, method="Brent", 
                    lower=0.005, upper=1/dfMin-sqrt(.Machine$double.eps), control=list(trace=TRUE,fnscale=-1) )
     res = list(par=1/dfInv$par,value=dfInv$value)
   }
@@ -191,30 +192,30 @@ cutt_LogLik = function(theta,ages,sd,K,df)
 
 cutt_LRT = function(theta0,thetaMLE,ages, sd, K, df, alpha=0.05)
 {
-  ll0=cutt_LogLik(theta0,ages,sd,K,df)
+  ll0 = cutt_LogLik(theta0,ages,sd,K,df)
   return(-2*(ll0-thetaMLE$value)-qchisq(1-alpha,1))
 }
 
-cutt_LogLikJoint = function(params,ages,sd,K) #parameters are (theta, dfInv) 
+cutt_LogLikJoint = function(params,ages,sd,K,dfMin=1) #parameters are (theta, dfInv) 
 {
-  if(params[2]>=0.5)
-    ll=sum(dcutt(x=ages,theta=params[1],K=K,sd=sd,df=2+sqrt(.Machine$double.eps),log=TRUE))*(params[2]+0.5) # game it away from df=2
+  if(params[2]>=1/dfMin)
+    ll=sum(dcutt(x=ages,theta=params[1],K=K,sd=sd,df=dfMin+sqrt(.Machine$double.eps),log=TRUE))*(1+params[2]-1/dfMin) # game it away from df=2
   else
     ll=sum(dcutt(x=ages,theta=params[1],K=K,sd=sd,df=1/params[2],log=TRUE))
   return(ll)
 }
 
-cutt_LogLikT = function(dfInv,ages,sd,theta,K)
+cutt_LogLikT = function(dfInv,ages,sd,theta,K,dfMin=1)
 {
-  if(dfInv>=0.5)
-    ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=2+sqrt(.Machine$double.eps),log=TRUE))*(dfInv+0.5) # game it away from df=2
+  if(dfInv>=1/dfMin)
+    ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=2+sqrt(.Machine$double.eps),log=TRUE))*(1+dfInv-1/dfMin) # game it away from df=2
   else
     ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=1/dfInv,log=TRUE))
   return(ll)
 }
 
-cutt_LRTprofile = function(theta0, mles, ages, sd, K, alpha=0.05)
+cutt_LRTprofile = function(theta0, mles, ages, sd, K, alpha=0.05, dfMin=1)
 {
-  ll0  = getDF(ages,theta=theta0, sd=sd, K=K, dfInvInit = mles$par[2])$value
+  ll0 = getDF(ages,theta=theta0, sd=sd, K=K, dfInvInit = mles$par[2], dfMin=1)$value
   return(-2*(ll0-mles$value)-qchisq(1-alpha,1))
 }
