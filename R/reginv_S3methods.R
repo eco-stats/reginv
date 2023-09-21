@@ -7,7 +7,7 @@ print.reginv <- function(x, ...) {
 }
 
 #'@export
-print.mle_fossil <- function(x, ...) {
+print.mle_cutt <- function(x, ...) {
   cat("\n Call: ")
   print(x$call)
   cat("\n  MLE:", x$theta[1],"\n")

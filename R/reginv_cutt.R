@@ -105,7 +105,7 @@ reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/
       stats = NULL
     }
     # call reginv
-    resulti = reginv(ages,getT=getThMLE,simulateData=simFn_cutt,paramInits=paramInits,
+    resulti = reginv(data=ages,getT=getThMLE,simulateData=simFn_cutt,paramInits=paramInits,
                         q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, dat=ages, method=method,stats=stats)
     result$theta[[iQ]] = resulti$theta
     result$error[[iQ]] = resulti$error
@@ -124,8 +124,7 @@ simFn_cutt = function (theta, K, sd, df, n=length(sd), dat)
     W = rep(theta,n)
   else
   {
-    if(is.null(df))
-      df = getDF(dat, theta=theta, sd=sd, K=K, dfInvInit = 0, dfMin=1)$par
+    if( is.null(df) )  df = getDF(dat, theta=theta, sd=sd, K=K)$par
     W = rcutt(theta, K, sd, df=df, n=n)
   }
   return(W)

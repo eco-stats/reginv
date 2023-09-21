@@ -70,26 +70,27 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
     sd   = sd[ages<=K]
     ages = ages[ages<=K]
   }
-  if(all(sd==0)) & is.null(df)) df=Inf # if sds are zero then df is irrelevant
+  if(all(sd==0) & is.null(df)) df=Inf # if sds are zero then df is irrelevant
   if(is.null(df))
   {
     dfKnown = FALSE
     mles = getJointMLE(ages=ages, theta=min(ages), sd=sd, K=K, dfMin=dfMin)
     thetaMLE = list(par=mles$par[1])
-    df = 1/mles$par[2]
+    dfOut = 1/mles$par[2]
     vr = solve(-mles$hessian)
     SE = if(is.nan(vr[1,1])) 0 else sqrt(vr[1,1])
   }
   else
   {
     dfKnown = TRUE
+    dfOut=df
     thetaMLE = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
     SE = 1/sqrt(-thetaMLE$hessian)
   }
 
   if(is.null(alpha))
   {
-    result = list(theta=thetaMLE$par, se=SE, df=df, call=match.call())
+    result = list(theta=thetaMLE$par, se=SE, df=dfOut, call=match.call())
   }
   else
   {
@@ -129,7 +130,7 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
           ci[iQ] = thLim$root
       }
     }
-    result = list( theta=thetaMLE$par, ci=ci, se=SE, q=q, df=df, call=match.call())
+    result = list( theta=thetaMLE$par, ci=ci, se=SE, q=q, df=dfOut, call=match.call())
   }
   class(result)="mle_cutt"
   return( result )
@@ -180,7 +181,7 @@ getDF = function( ages, theta, sd, K, dfInvInit=0, dfMin=1 )
   else
   {
     dfInv = optim( dfInvInit, cutt_LogLikT, ages=ages, sd=sd, theta=theta, K=K, dfMin=dfMin, method="Brent", 
-                   lower=0.005, upper=1/dfMin-sqrt(.Machine$double.eps), control=list(trace=TRUE,fnscale=-1) )
+                   lower=0.005, upper=1/dfMin-sqrt(.Machine$double.eps), control=list(trace=TRUE,fnscale=-1, maxit=10) )
     res = list(par=1/dfInv$par,value=dfInv$value)
   }
   return(res)
