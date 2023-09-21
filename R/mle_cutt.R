@@ -70,6 +70,7 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
     sd   = sd[ages<=K]
     ages = ages[ages<=K]
   }
+  if(all(sd==0)) & is.null(df)) df=Inf # if sds are zero then df is irrelevant
   if(is.null(df))
   {
     dfKnown = FALSE
@@ -143,7 +144,7 @@ getThetaMLE = function(ages, theta=min(ages), sd, K, df )
   return(thetaMLE)
 }
 
-getJointMLE = function(ages, theta=min(ages), sd, K, df=4, nIter=10, tol=1.e-5, dfMin=1 )
+getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5, dfMin=1 )
 {
   if(all(sd==0))
     MLE = list( par=c(min(ages),Inf), value=length(ages)*log(1/(K-min(ages))), hessian=matrix(-Inf,2,2) )
@@ -172,7 +173,7 @@ getJointMLE = function(ages, theta=min(ages), sd, K, df=4, nIter=10, tol=1.e-5, 
   return(MLE)
 }
 
-getDF = function( ages, theta, sd, K, dfInvInit=1/4, dfMin=1 )
+getDF = function( ages, theta, sd, K, dfInvInit=0, dfMin=1 )
 {
   if(all(sd==0))
     res = list( par=Inf, value=length(ages)*log(1/(K-min(ages))) )

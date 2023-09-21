@@ -83,7 +83,7 @@ reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/
   {
     for(i in 1:length(paramInits) )
     {
-      newDat = simFn_cutt(theta=paramInits[i],K=K,sd=sd,df=df,n=n)
+      newDat = simFn_cutt(theta=paramInits[i],K=K,sd=sd,df=df,n=n,dat=ages)
       stats = rbind(stats, c(theta=paramInits[i], T = getThMLE(newDat, K=K,sd=sd,df=df,n=n), thetaEst=paramInits[i]) )
     }      
     names(stats)=c("theta","T","thetaEst")
@@ -106,7 +106,7 @@ reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/
     }
     # call reginv
     resulti = reginv(ages,getT=getThMLE,simulateData=simFn_cutt,paramInits=paramInits,
-                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, method=method,stats=stats)
+                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, dat=ages, method=method,stats=stats)
     result$theta[[iQ]] = resulti$theta
     result$error[[iQ]] = resulti$error
     result$iter[[iQ]]  = resulti$iter
@@ -118,16 +118,20 @@ reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/
 }
 
 
-simFn_cutt = function (theta, K, sd, df, n=length(sd))
+simFn_cutt = function (theta, K, sd, df, n=length(sd), dat)
 {
   if(theta>K) #trying to game it to push estimates away from K 
     W = rep(theta,n)
   else
+  {
+    if(is.null(df))
+      df = getDF(dat, theta=theta, sd=sd, K=K, dfInvInit = 0, dfMin=1)$par
     W = rcutt(theta, K, sd, df=df, n=n)
+  }
   return(W)
 }
 
-getThMLE = function (ages, K, sd, df, n=length(ages) )
+getThMLE = function (ages, K, sd, df, n=length(ages), dat=NULL )
 {
   if(all(ages>K))
     theta = min(ages)
