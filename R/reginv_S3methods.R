@@ -11,7 +11,7 @@ print.mle_cutt <- function(x, ...) {
   cat("\n Call: ")
   print(x$call)
   cat("\n  MLE:", x$theta[1],"\n")
-  if(is.null(x$call$alpha)==FALSE)
+  if(is.null(x$q)==FALSE)
   {
     cat("\n   CI:\n")
     print(x$ci)
