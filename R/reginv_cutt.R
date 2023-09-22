@@ -58,7 +58,7 @@
 #' # when n or sd is small):
 #' mle_cutt(ages=ages, sd=1000, K=25000, alpha=0.05) 
 
-reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=500, method="rq")
+reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=1000, method="rq")
 {  
   
   # if method="lm" we just want a point estimate
