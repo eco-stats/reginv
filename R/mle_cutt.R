@@ -77,7 +77,8 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
     mles = getJointMLE(ages=ages, theta=min(ages), sd=sd, K=K, dfMin=dfMin)
     thetaMLE = list(par=mles$par[1])
     dfOut = 1/mles$par[2]
-    vr = solve(-mles$hessian)
+    vr = try( solve(-mles$hessian) )
+    if(inherits(vr,"try-error")) vr=matrix(NaN,2,2)
     SE = if(is.nan(vr[1,1])) 0 else sqrt(vr[1,1])
   }
   else
