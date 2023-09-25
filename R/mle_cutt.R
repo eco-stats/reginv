@@ -182,8 +182,8 @@ getDF = function( ages, theta, sd, K, dfInvInit=0, dfMin=2 )
   else
   {
     dfInv = optim( dfInvInit, cutt_LogLikT, ages=ages, sd=sd, theta=theta, K=K, dfMin=dfMin, method="Brent", 
-                   lower=0.005, upper=1/dfMin-sqrt(.Machine$double.eps), control=list(trace=TRUE,fnscale=-1, maxit=10) )
-    res = list(par=1/dfInv$par,value=dfInv$value)
+                   lower=0.00, upper=1/dfMin-sqrt(.Machine$double.eps), control=list(trace=TRUE,fnscale=-1, maxit=10) )
+    res = list(par=1/abs(dfInv$par),value=dfInv$value)
   }
   return(res)
 }
@@ -195,6 +195,11 @@ cutt_LogLik = function(theta,ages,sd,K,df)
 
 cutt_LRT = function(theta0,thetaMLE,ages, sd, K, df, alpha=0.05)
 {
+  if(df<0)
+  {
+    df=0
+    thetaMLE$value=thetaMLE$value+abs(df) #gaming it away from negative df
+  }
   ll0 = cutt_LogLik(theta0,ages,sd,K,df)
   return(-2*(ll0-thetaMLE$value)-qchisq(1-alpha,1))
 }
@@ -204,7 +209,7 @@ cutt_LogLikJoint = function(params,ages,sd,K,dfMin=2) #parameters are (theta, df
   if(params[2]>=1/dfMin)
     ll=sum(dcutt(x=ages,theta=params[1],K=K,sd=sd,df=dfMin+sqrt(.Machine$double.eps),log=TRUE))*(1+params[2]-1/dfMin) # game it away from df=2
   else
-    ll=sum(dcutt(x=ages,theta=params[1],K=K,sd=sd,df=1/params[2],log=TRUE))
+    ll=sum(dcutt(x=ages,theta=params[1],K=K,sd=sd,df=1/abs(params[2]),log=TRUE))
   return(ll)
 }
 
