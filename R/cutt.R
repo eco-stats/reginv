@@ -60,7 +60,7 @@ rcutt = function(n, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=5
 
 ##' @rdname cutt
 ##' @export
-qcutt = function(p, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=1)
+qcutt = function(p, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=0)
 {
   # sort out the dimensions of inputs
   nP = length(p)
