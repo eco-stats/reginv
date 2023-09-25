@@ -53,7 +53,7 @@
 
 mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wald=FALSE, ...)
 {  
-  dfMin=2
+  dfMin=3
   nSD = length(sd)
   n = length(ages)
   if(nSD==1) sd = rep(sd,n)
@@ -146,7 +146,7 @@ getThetaMLE = function(ages, theta=min(ages), sd, K, df )
   return(thetaMLE)
 }
 
-getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5, dfMin=2 )
+getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5, dfMin=3 )
 {
   if(all(sd==0))
     MLE = list( par=c(min(ages),Inf), value=length(ages)*log(1/(K-min(ages))), hessian=matrix(-Inf,2,2) )
@@ -175,7 +175,7 @@ getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5
   return(MLE)
 }
 
-getDF = function( ages, theta, sd, K, dfInvInit=0, dfMin=2 )
+getDF = function( ages, theta, sd, K, dfInvInit=0, dfMin=3 )
 {
   if(all(sd==0))
     res = list( par=Inf, value=length(ages)*log(1/(K-min(ages))) )
@@ -204,7 +204,7 @@ cutt_LRT = function(theta0,thetaMLE,ages, sd, K, df, alpha=0.05)
   return(-2*(ll0-thetaMLE$value)-qchisq(1-alpha,1))
 }
 
-cutt_LogLikJoint = function(params,ages,sd,K,dfMin=2) #parameters are (theta, dfInv) 
+cutt_LogLikJoint = function(params,ages,sd,K,dfMin=3) #parameters are (theta, dfInv) 
 {
   if(params[2]>=1/dfMin)
     ll=sum(dcutt(x=ages,theta=params[1],K=K,sd=sd,df=dfMin+sqrt(.Machine$double.eps),log=TRUE))*(1+params[2]-1/dfMin) # game it away from df=2
@@ -213,7 +213,7 @@ cutt_LogLikJoint = function(params,ages,sd,K,dfMin=2) #parameters are (theta, df
   return(ll)
 }
 
-cutt_LogLikT = function(dfInv,ages,sd,theta,K,dfMin=2)
+cutt_LogLikT = function(dfInv,ages,sd,theta,K,dfMin=3)
 {
   if(dfInv>=1/dfMin)
     ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=2+sqrt(.Machine$double.eps),log=TRUE))*(1+dfInv-1/dfMin) # game it away from df=2
@@ -222,7 +222,7 @@ cutt_LogLikT = function(dfInv,ages,sd,theta,K,dfMin=2)
   return(ll)
 }
 
-cutt_LRTprofile = function(theta0, mles, ages, sd, K, alpha=0.05, dfMin=2)
+cutt_LRTprofile = function(theta0, mles, ages, sd, K, alpha=0.05, dfMin=3)
 {
   ll0 = getDF(ages,theta=theta0, sd=sd, K=K, dfInvInit = mles$par[2], dfMin=dfMin)$value
   return(-2*(ll0-mles$value)-qchisq(1-alpha,1))
