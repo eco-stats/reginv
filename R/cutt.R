@@ -60,7 +60,7 @@ rcutt = function(n, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=5
 
 ##' @rdname cutt
 ##' @export
-qcutt = function(p, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=0)
+qcutt = function(p, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=50)
 {
   # sort out the dimensions of inputs
   nP = length(p)
@@ -108,10 +108,10 @@ qcutt = function(p, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=0
   {
     for(iObs in which(isDiff))
     {
-      eCrit = ifelse(is.finite(df), qt(p[iObs]/2,df), qnorm(p[iObs]/2) )
+      eCrit = ifelse(is.finite(df), qt(p[iObs],df), qnorm(p[iObs]) )
       qTry = try( uniroot( pcutt, interval=c(theta+sdVec[iObs]*eCrit,K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,df=df,pMinus=p[iObs],extendInt="upX") )
 
-            if(inherits(qTry,"try-error")==FALSE)
+      if(inherits(qTry,"try-error")==FALSE)
       {
         q[iObs] = qTry$root
         isDiff[iObs] = FALSE
