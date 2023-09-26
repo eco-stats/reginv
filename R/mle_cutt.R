@@ -195,11 +195,6 @@ cutt_LogLik = function(theta,ages,sd,K,df)
 
 cutt_LRT = function(theta0,thetaMLE,ages, sd, K, df, alpha=0.05)
 {
-  if(df<0)
-  {
-    df=0
-    thetaMLE$value=thetaMLE$value+abs(df) #gaming it away from negative df
-  }
   ll0 = cutt_LogLik(theta0,ages,sd,K,df)
   return(-2*(ll0-thetaMLE$value)-qchisq(1-alpha,1))
 }
@@ -216,7 +211,7 @@ cutt_LogLikJoint = function(params,ages,sd,K,dfMin=3) #parameters are (theta, df
 cutt_LogLikT = function(dfInv,ages,sd,theta,K,dfMin=3)
 {
   if(dfInv>=1/dfMin)
-    ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=2+sqrt(.Machine$double.eps),log=TRUE))*(1+dfInv-1/dfMin) # game it away from df=2
+    ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=dfMin+sqrt(.Machine$double.eps),log=TRUE))*(1+dfInv-1/dfMin) # game it away from df=2
   else
     ll=sum(dcutt(x=ages,theta=theta,K=K,sd=sd,df=1/dfInv,log=TRUE))
   return(ll)
