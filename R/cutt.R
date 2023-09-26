@@ -109,7 +109,7 @@ qcutt = function(p, theta, K, sd, df=Inf, tol=sqrt(.Machine$double.eps), nIter=5
     for(iObs in which(isDiff))
     {
       eCrit = ifelse(is.finite(df), qt(p[iObs],df), qnorm(p[iObs]) )
-      qTry = try( uniroot( pcutt, interval=c(theta+sdVec[iObs]*eCrit,K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,df=df,pMinus=p[iObs],extendInt="upX") )
+      qTry = try( uniroot( pcutt, interval=c(theta+sdVec[iObs]*eCrit,K),tol=tol,theta=theta,sd=sdVec[iObs],K=K,df=df,pMinus=p[iObs],extendInt="upX",maxiter=100) )
 
       if(inherits(qTry,"try-error")==FALSE)
       {
