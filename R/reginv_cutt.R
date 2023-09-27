@@ -25,7 +25,7 @@
 #' Given a vector of fossil ages \code{ages} and corresponding measurement error standard deviations \code{sd}, and an upper limit \code{K} for the possible age of a fossil
 #' that could be included in this dataset, our procedure then assumes:
 #' \itemize{
-#' \item That, for a fossil of a given age, measurement error estimating its age is normally distributed with mean zero and standard deviation as provided, truncated such that observed age is less than \code{K}
+#' \item That, for a fossil of a given age, measurement error estimating its age follows a distribution that is Student's T multiplied by the provided standard deviation, truncated such that observed age is less than \code{K}
 #' \item That, given a value for measurement error, fossil dates are uniformly distributed over the interval of allowable dates (which goes from estimated extinction time up until the value such that observed age is \code{K})
 #' }
 #' We then estimate extinction time by inversion of the maximum likelihood estimator, that is, we find the estimate of extinction time \eqn{\theta}{t}
@@ -42,23 +42,25 @@
 #'  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
 #'  \item{q}{ the vector of quantiles used in estimation.}
 #'  \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
+#'  \item{se}{ the estimated standard error of the MLE.}
 #'  \item{iter}{ the number of iterations taken to estimate this value}
 #'  \item{converged}{ whether or not this converged, at the specified tolerance}
+#'  \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}
 #'  \item{call }{ the function call}
-#' @seealso mle_cutt, rcutt
+#' @seealso est_cutt, mle_cutt, cutt
 #' @export
 #' @examples
-#' ages = rcutt(20, 10000, K=25000, sd=1000) #simulating some random data
+#' ages = rcutt(20, 10000, K=25000, sd=500) #simulating some random data
 #' 
 #' # for a point estimate together with a 95% CI
-#' reginv_cutt(ages=ages, sd=1000, K=25000, alpha=0.05) 
+#' reginv_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=400) 
 #' 
 #' # compare to estimates using asymptotic likelihood inference, which tend to
 #' # be narrower and have poorer coverage (they miss the true value too often
 #' # when n or sd is small):
-#' mle_cutt(ages=ages, sd=1000, K=25000, alpha=0.05) 
+#' mle_cutt(ages=ages, sd=500, K=25000, alpha=0.05) 
 
-reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/2), paramInits=NULL, iterMax=1000, method="rq")
+reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), paramInits=NULL, iterMax=1000, method="rq")
 {  
   
   # if method="lm" we just want a point estimate
@@ -96,6 +98,8 @@ reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/
     if(is.null(paramInits))
     {
       ft.mle = mle_cutt(ages=ages, sd=sd, K=K, df=df, q=q[iQ])
+      result$se = ft.mle$se
+      result$df = ft.mle$df
       is_SE_bad = is.nan(ft.mle$se) | is.infinite(ft.mle$se) | ft.mle$se==0
       stepSize = ifelse( is_SE_bad, IQR(ages)*0.1, ft.mle$se )
       if(ft.mle$ci[1]+5*stepSize>K) #make sure paramInits don't exceed K
@@ -114,6 +118,7 @@ reginv_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,0.5,1-alpha/
   }
   result$call <- match.call()
   class(result)="reginv"
+  result$method="reginv"
   return(result)
 }
 

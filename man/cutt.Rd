@@ -58,22 +58,21 @@ for fossil dates with extinction time \code{theta}, oldest observable data \code
 Given an extinction time \code{theta}, an upper limit \code{K} for the possible age of a fossil
 that could be included in this dataset, and measurement error standard deviations \code{sd}, our procedure then assumes that:
 \itemize{
-\item For a fossil of a given age, measurement error estimating its age is normally distributed with mean zero and standard deviation as provided
+\item That, for a fossil of a given age, measurement error estimating its age follows a distribution that is Student's T multiplied by the provided standard deviation, truncated such that observed age is less than \code{K}
 \item That fossil dates are uniformly distributed over the interval of allowable dates
-\item All observed fossil dates are less than \code{K}
 }
 This leads to a distribution function of the form
 \deqn{C\left[(w-\theta)\Phi\left(\frac{w-\theta}{\sigma}\right)+\sigma^2\phi\left(\frac{w-\theta}{\sigma}\right)\right]}
 where \eqn{C^{-1} = (K-\theta)\Phi\left(\frac{K-\theta}{\sigma}\right)+\sigma^2\phi\left(\frac{K-\theta}{\sigma}\right)}.
 }
 \examples{
-ages = rcutt(20, 10000, 25000, 1000) # simulate some random data
-pcutt(ages, 10000, 25000, 1000) # find CDF of each value (approx uniform)
-qcutt(c(0.25,0.75), 10000, 25000, 1000) # find first and third quartiles
+ages = rcutt(20, 10000, 25000, 500) # simulate some random data
+pcutt(ages, 10000, 25000, 500) # find CDF of each value (approx uniform)
+qcutt(c(0.25,0.75), 10000, 25000, 500) # find first and third quartiles
 
 # plot the density function
 w = seq(5000,26000,length=1000)
-plot(w,dcutt(w,10000,25000,1000),type="l",ylab="pdf(w)")
+plot(w,dcutt(w,10000,25000,500),type="l",ylab="pdf(w)")
 # compare to density if measurement error came from t(4) distribution
-plot(w,dcutt(w,10000,25000,1000,df=4),type="l",ylab="pdf(w,df=4)")
+plot(w,dcutt(w,10000,25000,500,df=4),type="l",ylab="pdf(w,df=4)")
 }

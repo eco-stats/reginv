@@ -10,7 +10,7 @@ mle_cutt(
   K,
   df = Inf,
   alpha = 0.05,
-  q = c(alpha/2, 1 - alpha/2),
+  q = c(lo = alpha/2, hi = 1 - alpha/2),
   wald = FALSE,
   ...
 )
@@ -44,6 +44,7 @@ This function returns an object of class "mle_cutt" with the following component
  \item{se}{ the estimated standard error of the MLE.}
  \item{ci}{ a vector of confidence limits for \code{theta} at the chosen confidence levels.}
  \item{q}{ the vector of quantiles used in estimation (if applicable).}
+ \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}
  \item{call }{ the function call}
 }
 \description{
@@ -55,9 +56,8 @@ These methods do not have good small sample properties, especially when the meas
 Given a vector of fossil ages \code{ages} and corresponding measurement error standard deviations \code{sd}, and an upper limit \code{K} for the possible age of a fossil
 that could be included in this dataset, our procedure then assumes that:
 \itemize{
-\item For a fossil of a given age, measurement error estimating its age is normally distributed with mean zero and standard deviation as provided
+\item That, for a fossil of a given age, measurement error estimating its age follows a distribution that is Student's T multiplied by the provided standard deviation, truncated such that observed age is less than \code{K}
 \item That fossil dates are uniformly distributed over the interval of allowable dates
-\item All observed fossil dates are less than \code{K}
 }
 We then estimate extinction time using the maximum likelihood estimator, and construct a confidence interval either using profile likelihood
 or a Wald interval. The profile likelihood approach finds the set of all extinction times \code{theta} such that a likelihood ratio test that the true
@@ -69,12 +69,12 @@ It is assumed that \code{ages} has been specified with smaller values representi
 If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens.
 }
 \examples{
-ages = rcutt(20, 10000, K=25000, sd=1000) #simulating some random data
+ages = rcutt(20, 10000, K=25000, sd=500) #simulating some random data
 # for the maximum likelihood estimate and a 95\% CI
-mle_cutt(ages, sd=1000, K=25000, alpha=0.05) 
+mle_cutt(ages, sd=500, K=25000, alpha=0.05) 
 # get the MLE only
-mle_cutt(ages, sd=1000, K=25000, alpha=NULL) 
+mle_cutt(ages, sd=500, K=25000, alpha=NULL) 
 }
 \seealso{
-rcutt
+est_cutt, cutt
 }

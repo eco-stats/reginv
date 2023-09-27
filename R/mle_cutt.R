@@ -22,9 +22,8 @@
 #' Given a vector of fossil ages \code{ages} and corresponding measurement error standard deviations \code{sd}, and an upper limit \code{K} for the possible age of a fossil
 #' that could be included in this dataset, our procedure then assumes that:
 #' \itemize{
-#' \item For a fossil of a given age, measurement error estimating its age is normally distributed with mean zero and standard deviation as provided
+#' \item That, for a fossil of a given age, measurement error estimating its age follows a distribution that is Student's T multiplied by the provided standard deviation, truncated such that observed age is less than \code{K}
 #' \item That fossil dates are uniformly distributed over the interval of allowable dates
-#' \item All observed fossil dates are less than \code{K}
 #' }
 #' We then estimate extinction time using the maximum likelihood estimator, and construct a confidence interval either using profile likelihood
 #' or a Wald interval. The profile likelihood approach finds the set of all extinction times \code{theta} such that a likelihood ratio test that the true
@@ -35,23 +34,24 @@
 #' It is assumed that \code{ages} has been specified with smaller values representing more recent specimens, for example, \code{ages} could be specified in years before present.
 #' If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens. 
 #' 
-#' @seealso rcutt
+#' @seealso est_cutt, cutt
 #' @return This function returns an object of class "mle_cutt" with the following components:
 #'
 #'  \item{theta}{ a maximum likelihood estimator of \code{theta}.}
 #'  \item{se}{ the estimated standard error of the MLE.}
 #'  \item{ci}{ a vector of confidence limits for \code{theta} at the chosen confidence levels.}
 #'  \item{q}{ the vector of quantiles used in estimation (if applicable).}
+#'  \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}
 #'  \item{call }{ the function call}
 #' @export
 #' @examples
-#' ages = rcutt(20, 10000, K=25000, sd=1000) #simulating some random data
+#' ages = rcutt(20, 10000, K=25000, sd=500) #simulating some random data
 #' # for the maximum likelihood estimate and a 95% CI
-#' mle_cutt(ages, sd=1000, K=25000, alpha=0.05) 
+#' mle_cutt(ages, sd=500, K=25000, alpha=0.05) 
 #' # get the MLE only
-#' mle_cutt(ages, sd=1000, K=25000, alpha=NULL) 
+#' mle_cutt(ages, sd=500, K=25000, alpha=NULL) 
 
-mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wald=FALSE, ...)
+mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(lo=alpha/2,hi=1-alpha/2), wald=FALSE, ...)
 {  
   dfMin=3
   nSD = length(sd)
@@ -79,14 +79,14 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
     dfOut = 1/mles$par[2]
     vr = try( solve(-mles$hessian) )
     if(inherits(vr,"try-error")) vr=matrix(NaN,2,2)
-    SE = if(is.nan(vr[1,1])) 0 else sqrt(vr[1,1])
+    SE = if(is.nan(vr[1,1])) 0 else as.vector(sqrt(vr[1,1]))
   }
   else
   {
     dfKnown = TRUE
     dfOut=df
     thetaMLE = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
-    SE = 1/sqrt(-thetaMLE$hessian)
+    SE = as.vector(1/sqrt(-thetaMLE$hessian))
   }
 
   if(is.null(alpha))
@@ -121,14 +121,19 @@ mle_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(alpha/2,1-alpha/2), wal
       dir[q>=0.5] ="upX"
       for(iQ in 1:nQ)
       {
-        if(dfKnown)
-          thLim = try( uniroot(cutt_LRT, c(qLo[iQ],qHi[iQ]), thetaMLE, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, df=df, extendInt=dir[iQ], ...) )
-        else
-          thLim = try( uniroot(cutt_LRTprofile, c(qLo[iQ],qHi[iQ]), mles, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, dfMin=dfMin, extendInt=dir[iQ], ...) )
-        if(inherits(thLim,"try-error"))
+        if(q[iQ]==0.5)
           ci[iQ] = thetaMLE$par
         else
-          ci[iQ] = thLim$root
+        {
+          if(dfKnown)
+            thLim = try( uniroot(cutt_LRT, c(qLo[iQ],qHi[iQ]), thetaMLE, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, df=df, extendInt=dir[iQ], ...) )
+          else
+            thLim = try( uniroot(cutt_LRTprofile, c(qLo[iQ],qHi[iQ]), mles, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, dfMin=dfMin, extendInt=dir[iQ], ...) )
+          if(inherits(thLim,"try-error"))
+            ci[iQ] = thetaMLE$par
+          else
+            ci[iQ] = thLim$root
+        }
       }
     }
     result = list( theta=thetaMLE$par, ci=ci, se=SE, q=q, df=dfOut, call=match.call())

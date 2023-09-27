@@ -4,6 +4,7 @@ print.reginv <- function(x, ...) {
   print(x$call)
   cat("\n")
   print(x$theta)
+  cat(" CI estimated using", x$method, "method\n")
 }
 
 #'@export
