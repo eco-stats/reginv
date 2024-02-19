@@ -13,7 +13,8 @@
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
 #' @param K Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 #' close to the age of the oldest fossil.
-#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Must be greater than 2. Default (Inf) uses a Gaussian distribution.
+#' @param df Numeric; degrees of freedom for the t-distribution used to model measurement error. Must be greater than 2. Uses a Gaussian distribution if \code{df=Inf}.
+#' Default (\code{NULL}) estimates \code{df} from the data.
 #' @param alpha Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals)
 #' @param q Numeric vector of values between 0 and 1, specifying the quantiles at which we want to solve for extinction time. Defaults to \code{c(alpha/2,0.5,1-alpha/2)},
 #' which gives the limits of a 100(1-\code{alpha})\% confidence interval and a point estimate obtained by solving at 0.5. If \code{q} is specified it overrides any input for \code{alpha}.
@@ -72,7 +73,7 @@
 #' # note this will run faster because it will call method-for a point estimate together with a 95% CI
 #' est_cutt(ages=ages5, sd=5000, K=25000, alpha=0.05, iterMax=500) 
 
-est_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), method=if(mean(sd)/(K-min(ages))<0.1) "reginv" else "mle", paramInits=NULL, iterMax=1000)
+est_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), method=if(mean(sd)/(K-min(ages))<0.1) "reginv" else "mle", paramInits=NULL, iterMax=1000)
 {  
 
   if(method=="reginv")
@@ -91,6 +92,7 @@ est_cutt = function(ages, sd, K, df=Inf, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi
       ftI = reginv_cutt(ages,sd,K,df,q=q[iQ],paramInits=paramInits,iterMax=iterMax,method=regMethod)
       result$theta[iQ] = ftI$theta[1]
       result$error[iQ] = ftI$error[1]
+      result$df        = ftI$df
       result$iter[iQ]  = ftI$iter[1]
       result$converged[iQ] = ftI$converged[1]
     }

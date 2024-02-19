@@ -1,0 +1,238 @@
+---
+title: Estimating extinction time from the fossil record accounting for measurement error
+author: "David Warton"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE,echo = TRUE)
+```
+
+## Problem statement
+
+Often we wish to estimate the time of extirpation of a species using the fossil record -- we have a sequence of estimated dates for the species, measured with error (whose magnitude is assumed to be known). For example, say we have the following data (from a red deer sub-species, sourced from supplementary material for Cooper et al 2015; Science):
+```{r data input}
+x=c(14729, 14903, 14743, 14738, 14739, 14741, 14732, 14720, 14657, 14638, 14635, 14631, 14642, 14613, 14577, 14544, 14539, 14545, 14541, 14541, 14507, 14490, 14496, 14440, 14389, 14389, 14413, 14361, 14391, 14373, 14323, 14278, 14306, 14301, 14229, 14101, 14068, 14035, 14057, 14018, 13999, 13951, 13939, 13896, 13835, 13819, 13660, 13485, 13482, 12714, 12514, 12227, 12202, 12122, 12124)
+sds=c(333, 176, 305, 301, 282, 278, 264, 261, 286, 309, 311, 295, 245, 256, 293, 252, 259, 302, 290, 289, 282, 240, 299, 279, 224, 230, 287, 216, 273, 284, 299, 251, 293, 301, 392, 268, 253, 244, 128, 161, 203, 175, 115, 158, 194, 207, 85, 98, 78, 55, 115, 179, 186, 243, 252)
+```
+
+There are two main sources of uncertainty to account for:
+
+1. _Sampling error_, that is, the last time the species was seen (12122 years ago) is not necessarily the last time it was there.
+
+1. _Measurement error_, because fossil ages were measured with uncertainty (whose standard deviation is assumed to be known in the below).
+
+Currently, methods in the literature account for one or other of these quantities, but typically not both. Classical estimators (Strauss, McInerney's, _etc_) account for sampling error only, GRIWM constructs confidence intervals which account for measurement error but not sampling error.
+
+The `est_cutt` function in the `reginv` package accounts for both, and produces nearly unbiased estimates of extinction time and confidence intervals that are close to exact.
+
+## Using the `est_cutt` function
+
+To use the `est_cutt` function from the `reginv` package, you need to specify as input:
+
+- `ages`, a vector of estimated fossil ages
+- `sd`, a vector of measurement error standard deviations (scalar would also be OK, assuming this is constant)
+- `K`, the oldest time for a fossil to be considered for inclusion in this dataset. If it is not clear what this is you could always remove the oldest fossil and set `K` equal to its value.
+
+There are other arguments you can pay with as well, consult the help file for details.
+
+```{r fit model}
+# if required, devtools::install_github("dwarton/reginv")
+library(reginv)
+est_cutt(x,sds,K=15000) # takes maybe a minute to run
+```
+
+This returns a point estimate for extinction of 12000 or so, and by default, it also includes a 95% confidence interval for it, which in this case extends a few centuries either side of 12000 BP.
+
+This code takes a fair while to run (maybe a minute?) because it is doing a lot of work in the background. By default, unless measurement error is large, it uses a new method I developed called _regression inversion_ (`method="reginv"`) which computes a maximum likelihood estimator under the CUTT model (see below), then repeatedly simulates new data at different potential extinction times in order to find a range that is plausible considering the estimators obtained from simulated data.
+
+A faster alternative method is to use inversion form the chi-squared distribution
+```{r fit modelMLE}
+# if required, devtools::install_github("dwarton/reginv")
+library(reginv)
+est_cutt(x,sds,K=15000,method="mle")
+```
+
+This ended up returning similar values, but in cases where measurement error is small it tends to return confidence intervals that are too short.
+
+
+## Model - the CUTT distribution
+
+The `est_cutt` function uses a new technique based on modelling fossil ages using what I'm calling a Compound Uniform -- Truncated T (CUTT) distribution. Using this distribution assumes
+
+- That, for a fossil of a given age, measurement error estimating its age follows a distribution that is Student's T multiplied by the provided standard deviation, truncated such that observed age is less than K
+
+- That fossil dates are uniformly distributed over the interval of allowable dates
+
+A truncated normal distribution could also be used (and is a special case of the T, where degrees of freedom is infinite) but I have noticed that measurement error seems to be long-tailed relative to the normal so the T tends to provide a better fit to data. Departures from uniform deposition rate could also be considered but usually I think there is not enough information to estimate a plausible alternative.
+
+```{r dat}
+x=c(29705,
+29907,
+30725,
+30726,
+30794,
+30803,
+30823,
+30996,
+31062,
+31699,
+32865,
+33855,
+35976,
+36299,
+36318,
+36462,
+36819,
+37129,
+37928,
+38326,
+39773,
+39683,
+40450,
+40914,
+41006,
+41043,
+41402,
+41468,
+41771,
+41967,
+42141,
+42016,
+42223,
+42236,
+42565,
+42377,
+42701,
+42717,
+42736,
+42817,
+42846,
+43195,
+43204,
+43359,
+44069,
+44133,
+44192,
+43785,
+44328,
+44363,
+44465,
+44938,
+44571,
+45020,
+45333,
+45417,
+45944,
+46083,
+46425,
+46299,
+48278,
+48281,
+48298,
+48599,
+48501,
+49285,
+49417,
+49449,
+49443,
+48771
+)
+sds=c(
+  173,
+169,
+993,
+998,
+919,
+900,
+893,
+847,
+763,
+1087,
+2323,
+711,
+674,
+1005,
+330,
+429,
+1519,
+1052,
+980,
+666,
+1431,
+1851,
+670,
+468,
+387,
+497,
+707,
+656,
+597,
+414,
+690,
+464,
+622,
+648,
+296,
+801,
+468,
+415,
+407,
+505,
+548,
+736,
+761,
+756,
+1205,
+876,
+836,
+406,
+804,
+908,
+997,
+1563,
+1106,
+1539,
+1167,
+1194,
+783,
+763,
+2290,
+994,
+2917,
+2886,
+2868,
+2741,
+2749,
+2042,
+1884,
+1919,
+2095,
+2916
+)
+```
+
+For example:
+```{r hist}
+hist(x,breaks=10)
+```
+
+Note that the data start off looking fairly flat then develop a strong left-tail. This is what we would expect from a CUTT distribution:
+
+```{r dcutt}
+# if required, devtools::install_github("dwarton/reginv")
+library(reginv)
+xs=seq(25000,50000,length=100)
+ds = dcutt(xs,29500,K=50000,sd=mean(sds),df=3)
+plot(xs,ds,type="l")
+```
+
+The flat bit to the right is the uniform part, and the left-tail comes from measurement error. The assumed extinction time for this particular distribution is halfway down this curve at 13000.
+
+Comparing this curve with the actual data, I think the left-tail for the observed data is longer than we would expect due to measurement error -- this means either that deposition rate was not constant, but tailed off towards extinction time, or it means that measurement error is larger than the values suggested in input.
+
+```{r qqplot}
+# install.packages("ecostats")
+ecostats::qqenvelope(qnorm(pcutt(x,ft$theta[2],sd=sds,K=50000,df=ft$df)))
+```

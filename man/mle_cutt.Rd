@@ -8,7 +8,7 @@ mle_cutt(
   ages,
   sd,
   K,
-  df = Inf,
+  df = NULL,
   alpha = 0.05,
   q = c(lo = alpha/2, hi = 1 - alpha/2),
   wald = FALSE,
@@ -23,7 +23,8 @@ mle_cutt(
 \item{K}{Numeric upper bound for fossil ages - how old fossils can be before they are ignored, for the purpose of this analysis. A sensible choice of \code{K} is
 close to the age of the oldest fossil.}
 
-\item{df}{Numeric; degrees of freedom for the t-distribution used to model measurement error. Set to NULL to estimate degrees of freedom from the data. If a number, must be greater than 1. Default (Inf) uses a Gaussian distribution.}
+\item{df}{Numeric; degrees of freedom for the t-distribution used to model measurement error. Must be greater than 2. Uses a Gaussian distribution if \code{df=Inf}.
+Default (\code{NULL}) estimates \code{df} from the data.}
 
 \item{alpha}{Numeric between 0 and 1. Used to find a 100(1-\code{alpha})\% confidence interval. Defaults to 0.05 (95\% confidence intervals).
 If \code{alpha=NULL}, returns a maximum likelihood estimator only.}
