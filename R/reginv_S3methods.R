@@ -8,13 +8,22 @@ print.reginv <- function(x, ...) {
 }
 
 #'@export
-print.mle_cutt <- function(x, ...) {
+print.est_cutt <- function(x, ...) {
   cat("\n Call: ")
   print(x$call)
-  cat("\n  MLE:", x$theta[1],"\n")
   if(is.null(x$q)==FALSE)
   {
     cat("\n   CI:\n")
-    print(x$ci)
+    print(x$theta)
   }
+  else
+    cat("\n  MLE:", x$theta[1],"\n")
+  
+  cat(" CI estimated using", x$method, "method\n")
+}
+
+#'@export
+qqenvelope.est_cutt <- function(x, ...) {
+#insert function here
+# also make qqenvelope a generic I guess...
 }

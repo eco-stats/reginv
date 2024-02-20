@@ -19,11 +19,11 @@ deerSds = c(105.75, 78.5, 69.5, 102, 131.25, 120, 97.25, 89.5, 89.5, 95, 78.5, 7
 
 There are two main sources of uncertainty to account for:
 
-1. _Sampling error_, that is, the last time the species was seen (12122 years ago) is not necessarily the last time it was there.
+1. _Sampling error_, that is, the last time the species was seen (`r format(min(deer), scientific=FALSE)` years ago) is not necessarily the last time it was there.
 
 1. _Measurement error_, because fossil ages were measured with uncertainty (whose standard deviation is assumed to be known in the below).
 
-Currently, methods in the literature account for one or other of these quantities, but typically not both. Classical estimators (Strauss, McInerney's, _etc_) account for sampling error only, GRIWM constructs confidence intervals which account for measurement error but don't actually deal with sampling error.
+Currently, methods in the literature account for one or other of these quantities, but typically not both. Classical estimators (Strauss, McInerney's, _etc_) account for sampling error only, GRIWM constructs confidence intervals which account for measurement error but don't actually deal with sampling error in CI construction.
 
 The `est_cutt` function in the `reginv` package accounts for both, and produces nearly unbiased estimates of extinction time and confidence intervals that are close to exact, when assumptions are satisfied.
 
@@ -44,16 +44,16 @@ ft = est_cutt(deer,deerSds,K=14250) # takes maybe a minute to run
 ft
 ```
 
-This returns a point estimate for extinction of `r format(ft$theta[2], scientific=FALSE)` BP, and by default, it also includes a 95% confidence interval for it, which in this case extends a few centuries either side of `r format(ft$theta[2], scientific=FALSE)` BP.
+This returns a point estimate for extinction of `r format(ft$theta[2], scientific=FALSE)` BP, and by default, it also includes a 95% confidence interval for it, which in this case extends a couple of centuries either side of `r format(ft$theta[2], scientific=FALSE)` BP.
 
 This code takes a fair while to run (maybe a minute?) because it is doing a lot of work in the background. By default, unless measurement error is large, it uses a new method called _regression inversion_ (`method="reginv"`) which computes a maximum likelihood estimator under the CUTT model (see below), then repeatedly simulates new data at different potential extinction times in order to find a range that is plausible considering the estimators obtained from simulated data.
 
-A faster alternative method is to use inversion form the chi-squared distribution
+A faster alternative method is to use inversion from the chi-squared distribution
 ```{r fit modelMLE}
 est_cutt(deer,deerSds,K=14250,method="mle")
 ```
 
-This ended up returning similar values, but in cases where measurement error is small it tends to return confidence intervals that are too short.
+This is much faster because it doesn't simulate new values for the estimator, it instead assumes they are normally distributed (which is a reasonable assumption when neither sample size nor measurement error is small). This ended up returning similar values, but in cases where measurement error is small it tends to return confidence intervals that are too short.
 
 
 ## Model - the CUTT distribution
@@ -76,13 +76,13 @@ While this looks fairly symmetrical, the model we are fitting actually expects t
 ```{r dcutt}
 library(reginv)
 xs=seq(12300,14250,length=100)
-ds = dcutt(xs,12500,K=14250,sd=mean(deerSds),df=3)
+ds = dcutt(xs,12500,K=14250,sd=mean(deerSds),df=Inf)
 plot(xs,ds,type="l")
 ```
 
 The left-tail comes from measurement error. The assumed extinction time for this particular distribution is about halfway down this curve at 12500. The curve flattens out to the right away from the extinction time, due to the uniform assumption on deposition rates.
 
-It is hard to compare histograms to check assumptions, unless you have a big sample size. I would suggest constructing a qqplot against the best-fitting CUTT distribution as follows:
+It can be hard to compare a sample histogram to a density curve to check assumptions, unless you have a very big sample size. I would suggest constructing a qqplot against the best-fitting CUTT distribution as follows:
 
 ```{r qqplot}
 # install.packages("ecostats") #if you don't already have the ecostats package installed

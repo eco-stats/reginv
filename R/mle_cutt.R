@@ -36,13 +36,14 @@
 #' If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens. 
 #' 
 #' @seealso est_cutt, cutt
-#' @return This function returns an object of class "mle_cutt" with the following components:
+#' @return This function returns an object of class "est_cutt" with the following components:
 #'
 #'  \item{theta}{ a maximum likelihood estimator of \code{theta}.}
 #'  \item{se}{ the estimated standard error of the MLE.}
 #'  \item{ci}{ a vector of confidence limits for \code{theta} at the chosen confidence levels.}
 #'  \item{q}{ the vector of quantiles used in estimation (if applicable).}
 #'  \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}
+#'  \item{data}{ a data frame with the data used in analysis, in columns labelled as \code{ages} and \code{sd}}
 #'  \item{call }{ the function call}
 #' @export
 #' @examples
@@ -52,7 +53,7 @@
 #' # get the MLE only
 #' mle_cutt(ages, sd=500, K=25000, alpha=NULL) 
 
-mle_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,hi=1-alpha/2), wald=FALSE, ...)
+mle_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), wald=FALSE, ...)
 {  
   dfMin=3
   nSD = length(sd)
@@ -97,15 +98,15 @@ mle_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,hi=1-alpha/
   else
   {
     # set up result list.
-    ci=rep(NA,length(q))
+    theta=rep(NA,length(q))
     if(is.null(names(q)))
-      names(ci)=paste0("q=",q)
+      names(theta)=paste0("q=",q)
     else
-      names(ci)=names(q)
+      names(theta)=names(q)
 
     if(wald==TRUE)
     {
-      ci = thetaMLE$par + qnorm(q) * SE
+      theta = thetaMLE$par + qnorm(q) * SE
     }
     else
     {
@@ -123,7 +124,7 @@ mle_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,hi=1-alpha/
       for(iQ in 1:nQ)
       {
         if(q[iQ]==0.5)
-          ci[iQ] = thetaMLE$par
+          theta[iQ] = thetaMLE$par
         else
         {
           if(dfKnown)
@@ -131,15 +132,15 @@ mle_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,hi=1-alpha/
           else
             thLim = try( uniroot(cutt_LRTprofile, c(qLo[iQ],qHi[iQ]), mles, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, dfMin=dfMin, extendInt=dir[iQ], ...) )
           if(inherits(thLim,"try-error"))
-            ci[iQ] = thetaMLE$par
+            theta[iQ] = thetaMLE$par
           else
-            ci[iQ] = thLim$root
+            theta[iQ] = thLim$root
         }
       }
     }
-    result = list( theta=thetaMLE$par, ci=ci, se=SE, q=q, df=dfOut, call=match.call())
+    result = list( theta=theta, se=SE, q=q, df=dfOut, method="mle", data=data.frame(ages=ages,sd=sd), call=match.call())
   }
-  class(result)="mle_cutt"
+  class(result)="est_cutt"
   return( result )
 }
 

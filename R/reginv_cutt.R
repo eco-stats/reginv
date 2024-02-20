@@ -35,19 +35,23 @@
 #' the lower limit of the \code{100*(1-alpha)}\% confidence interval (solving at \code{q=alpha/2}), a point estimator for extinction time (solving at \code{q=0.5}), and an upper limit for the
 #' confidence interval (solving at \code{q=1-alpha/2}). If a vector \code{q} is specified as input then the function solves for this vector instead. 
 #' 
+#' Note that because we are using simulation to estimate parameters and their confidence intervals, we will get slightly different answers on each run. 
+#' 
 #' It is assumed that \code{ages} has been specified with smaller values representing more recent specimens, for example, \code{ages} could be specified in years before present.
 #' If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens. 
 #' 
-#' @return This function returns an object of class "reginv" with the following components:
+#' @return This function returns an object of class \code{est_cutt} with the following components:
 #'
 #'  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
 #'  \item{q}{ the vector of quantiles used in estimation.}
 #'  \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
 #'  \item{se}{ the estimated standard error of the MLE.}
-#'  \item{iter}{ the number of iterations taken to estimate this value}
-#'  \item{converged}{ whether or not this converged, at the specified tolerance}
+#'  \item{iter}{ the number of iterations taken to estimate this value.}
+#'  \item{converged}{ whether or not this converged, at the specified tolerance.}
 #'  \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}
-#'  \item{call }{ the function call}
+#'  \item{method}{ \code{reginv}.}
+#'  \item{data}{ a data frame with the data used in analysis, in columns labelled as \code{ages} and \code{sd}.}
+#'  \item{call }{ the function call.}
 #' @seealso est_cutt, mle_cutt, cutt
 #' @export
 #' @examples
@@ -103,10 +107,10 @@ reginv_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.
       result$df = ft.mle$df
       is_SE_bad = is.nan(ft.mle$se) | is.infinite(ft.mle$se) | ft.mle$se==0
       stepSize = ifelse( is_SE_bad, IQR(ages)*0.1, ft.mle$se )
-      if(ft.mle$ci[1]+5*stepSize>K) #make sure paramInits don't exceed K
-        paramInits = seq( ft.mle$ci[1] -5* stepSize, K, length=100) 
+      if(ft.mle$theta[1]+5*stepSize>K) #make sure paramInits don't exceed K
+        paramInits = seq( ft.mle$theta[1] -5* stepSize, K, length=100) 
       else
-        paramInits = ft.mle$ci[1] + stepSize*seq(-5,5,length=100) 
+        paramInits = ft.mle$theta[1] + stepSize*seq(-5,5,length=100) 
       stats = NULL
     }
     # call reginv
@@ -117,9 +121,11 @@ reginv_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.
     result$iter[[iQ]]  = resulti$iter
     result$converged[[iQ]]  = resulti$converged
   }
+  result$data = data.frame(ages=ages, sd=sd)
+  result$method="reginv"
   result$call <- match.call()
   class(result)="reginv"
-  result$method="reginv"
+  class(result)="est_cutt"
   return(result)
 }
 

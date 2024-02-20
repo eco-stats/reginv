@@ -42,16 +42,18 @@ high influence points, \code{method='prob'} uses linear probit regression on an 
 \code{method='lm'} uses a linear regression, which is appropriate for bias correction rather than confidence interval estimation. In this case \code{q} and \code{alpha} are ignored and only a point estimate is returned.}
 }
 \value{
-This function returns an object of class "reginv" with the following components:
+This function returns an object of class \code{est_cutt} with the following components:
 
  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
  \item{q}{ the vector of quantiles used in estimation.}
  \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
  \item{se}{ the estimated standard error of the MLE.}
- \item{iter}{ the number of iterations taken to estimate this value}
- \item{converged}{ whether or not this converged, at the specified tolerance}
+ \item{iter}{ the number of iterations taken to estimate this value.}
+ \item{converged}{ whether or not this converged, at the specified tolerance.}
  \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}
- \item{call }{ the function call}
+ \item{method}{ \code{reginv}.}
+ \item{data}{ a data frame with the data used in analysis, in columns labelled as \code{ages} and \code{sd}.}
+ \item{call }{ the function call.}
 }
 \description{
 Estimates a confidence interval for extinction time using regression inversion, which finds a range of values for extinction time that
@@ -72,6 +74,8 @@ such that if this were the true extinction time then the chance of seeing a MLE 
 is estimated by regression, hence we call our procedure regression inversion. If \code{alpha} is specified this function will return three values:
 the lower limit of the \code{100*(1-alpha)}\% confidence interval (solving at \code{q=alpha/2}), a point estimator for extinction time (solving at \code{q=0.5}), and an upper limit for the
 confidence interval (solving at \code{q=1-alpha/2}). If a vector \code{q} is specified as input then the function solves for this vector instead. 
+
+Note that because we are using simulation to estimate parameters and their confidence intervals, we will get slightly different answers on each run. 
 
 It is assumed that \code{ages} has been specified with smaller values representing more recent specimens, for example, \code{ages} could be specified in years before present.
 If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens.

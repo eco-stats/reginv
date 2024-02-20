@@ -10,7 +10,7 @@ mle_cutt(
   K,
   df = NULL,
   alpha = 0.05,
-  q = c(lo = alpha/2, hi = 1 - alpha/2),
+  q = c(lo = alpha/2, point = 0.5, hi = 1 - alpha/2),
   wald = FALSE,
   ...
 )
@@ -39,13 +39,14 @@ TRUE uses a Wald interval (which has very poor performance for small sample size
 TRUE uses a Wald interval (which has very poor performance for small sample sizes!)}
 }
 \value{
-This function returns an object of class "mle_cutt" with the following components:
+This function returns an object of class "est_cutt" with the following components:
 
  \item{theta}{ a maximum likelihood estimator of \code{theta}.}
  \item{se}{ the estimated standard error of the MLE.}
  \item{ci}{ a vector of confidence limits for \code{theta} at the chosen confidence levels.}
  \item{q}{ the vector of quantiles used in estimation (if applicable).}
  \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}
+ \item{data}{ a data frame with the data used in analysis, in columns labelled as \code{ages} and \code{sd}}
  \item{call }{ the function call}
 }
 \description{

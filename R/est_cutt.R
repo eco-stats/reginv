@@ -3,7 +3,7 @@
 #' Estimates a point estimate and a confidence interval for extinction time using either regression inversion
 #' or likelihood-based inference, given a vector of fossil ages together with their measurement errors. By default 
 #' the decision about which method to use is determined by the size of measurement error relative to the length of 
-#' the time interval for which we have fossils (likelihhod-based inference used for larger measurement error). 
+#' the time interval for which we have fossils (likelihood-based inference used for larger measurement error). 
 #' Extinction time is estimated using a maximum likelihood estimator for the compound uniform-truncated T 
 #' distribution, which accounts for sampling error (the fact that the most recent fossil date is not necessarily
 #' the most recent time that the species was extant) and measurement error (error dating fossils).
@@ -35,7 +35,9 @@
 #' such that if this were the true extinction time then the chance of seeing a MLE less than the one obtained from sample \code{ages} is equal to \code{q}. The probability
 #' is either estimated by regression inversion (if \code{method="reginv"}, using the \code{\link{reginv_cutt}} function) or using a chi-squared distribution (if \code{method="mle"}, 
 #' using the \code{\link{mle_cutt}} function). Regression inversion is computationally intensive but works well in a broad range of settings, whereas likelihood inversion is quick but
-#' is only reliable when measurement error is large, hence is the default in such settings.
+#' is only reliable when measurement error is large, hence is the default in such settings (when average measurement error standard deviation is more than a tenth of the range of the data).
+#' Note that because \code{method="reginv"} uses simulation to estimate parameters and their confidence intervals, we will get slightly different answers on different runs. 
+#' 
 #' 
 #' If \code{alpha} is specified this function will return three values:
 #' the lower limit of the \code{100*(1-alpha)}\% confidence interval (solving at \code{q=alpha/2}), a point estimator for extinction time (solving at \code{q=0.5}), and an upper limit for the
@@ -51,6 +53,7 @@
 #'  \item{se}{ the estimated standard error of the MLE.}
 #'  \item{q}{ the vector of quantiles used in estimation (if applicable).}
 #'  \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}
+#'  \item{data}{ a data frame with the data used in analysis, in columns labelled as \code{ages} and \code{sd}}
 #'  \item{call }{ the function call}
 #'  \item{method}{ the method used for estimation}
 #' If \code{\link{reginv_cutt}} is used for estimation is used for estimation, we also get the following components:
@@ -100,15 +103,14 @@ est_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
       result$converged[iQ] = ftI$converged[1]
     }
     result$method="reginv"
+    class(result) = "reginv"
   }
   else
   {
     result = mle_cutt(ages, sd, K, df=Inf, q=q)
-    result$theta = result$ci
-    result$ci = NULL
-    result$method="mle"
   }
-  result$call <- match.call()
-  class(result)="reginv"
+  class(result) = "est_cutt"
+  result$call   = match.call()
+  result$data   = data.frame(ages=ages,sd=sd)
   return(result)
 }
