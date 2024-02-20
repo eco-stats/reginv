@@ -73,8 +73,11 @@ that could be included in this dataset, our procedure then assumes:
 }
 We then estimate extinction time by inversion of the maximum likelihood estimator, that is, we find the estimate of extinction time \eqn{\theta}{t}
 such that if this were the true extinction time then the chance of seeing a MLE less than the one obtained from sample \code{ages} is equal to \code{q}. The probability
-is either estimated by regression (if \code{method="reginv"}, using the \code{\link{reginv_cutt}} function) or using a chi-squared distribution (if \code{method="mle"}, 
-using the \code{\link{mle_cutt}} function). If \code{alpha} is specified this function will return three values:
+is either estimated by regression inversion (if \code{method="reginv"}, using the \code{\link{reginv_cutt}} function) or using a chi-squared distribution (if \code{method="mle"}, 
+using the \code{\link{mle_cutt}} function). Regression inversion is computationally intensive but works well in a broad range of settings, whereas likelihood inversion is quick but
+is only reliable when measurement error is large, hence is the default in such settings.
+
+If \code{alpha} is specified this function will return three values:
 the lower limit of the \code{100*(1-alpha)}\% confidence interval (solving at \code{q=alpha/2}), a point estimator for extinction time (solving at \code{q=0.5}), and an upper limit for the
 confidence interval (solving at \code{q=1-alpha/2}). For \code{method="reginv"}, a bias correction is used when finding the point estimator, also obtained via regression inversion. 
 If a vector \code{q} is specified as input then the function solves for this vector instead. 
