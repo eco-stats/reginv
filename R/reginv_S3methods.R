@@ -18,7 +18,6 @@ print.est_cutt <- function(x, ...) {
   }
   else
     cat("\n  MLE:", x$theta[1],"\n")
-  librr
   cat(" CI estimated using", x$method, "method\n")
 }
 
