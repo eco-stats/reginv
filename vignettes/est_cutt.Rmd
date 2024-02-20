@@ -11,10 +11,10 @@ knitr::opts_chunk$set(warning = FALSE,echo = TRUE)
 
 ## Problem statement
 
-Often we wish to estimate the time of extirpation of a species using the fossil record -- we have a sequence of estimated dates for the species, measured with error (whose magnitude is assumed to be known). For example, say we have the following data (from a red deer sub-species, sourced from supplementary material for Cooper et al 2015; Science):
+Often we wish to estimate the time of extirpation of a species using the fossil record -- we have a sequence of estimated dates for the species, measured with error (whose magnitude is assumed to be known). For example, say we have the following data (from the Irish Elk, sourced from supplementary material for Cooper et al 2015; Science):
 ```{r data input}
-deer = c(14729, 14903, 14743, 14738, 14739, 14741, 14732, 14720, 14657, 14638, 14635, 14631, 14642, 14613, 14577, 14544, 14539, 14545, 14541, 14541, 14507, 14490, 14496, 14440, 14389, 14389, 14413, 14361, 14391, 14373, 14323, 14278, 14306, 14301, 14229, 14101, 14068, 14035, 14057, 14018, 13999, 13951, 13939, 13896, 13835, 13819, 13660, 13485, 13482, 12714, 12514, 12227, 12202, 12122, 12124)
-deerSds = c(333, 176, 305, 301, 282, 278, 264, 261, 286, 309, 311, 295, 245, 256, 293, 252, 259, 302, 290, 289, 282, 240, 299, 279, 224, 230, 287, 216, 273, 284, 299, 251, 293, 301, 392, 268, 253, 244, 128, 161, 203, 175, 115, 158, 194, 207, 85, 98, 78, 55, 115, 179, 186, 243, 252)
+deer = c(14215.25, 14234.5, 14160, 14095.5, 14059.75, 13984.5, 13884.75, 13864, 13854, 13844.5, 13675.5, 13664.25, 13624.25, 13643.5, 13589.75, 13576.5, 13490.75, 13445, 13431.25, 13399.5, 13379.25, 13382.75, 13357.5, 13348.5, 13347.25, 13340.25, 13258.75, 13192.75, 13192.75, 13189.5, 13182.25, 13033.5, 13022.25, 12956.5, 12825.75, 12839.75, 12860.25, 12791.25, 12779.75, 12693.25, 12628.75, 12739.75, 12591.5, 12432.75)
+deerSds = c(105.75, 78.5, 69.5, 102, 131.25, 120, 97.25, 89.5, 89.5, 95, 78.5, 74.75, 132.75, 94, 116.75, 119, 54.75, 119.5, 112.75, 60, 90.75, 58.25, 93, 92, 65.75, 102.25, 284.25, 102.25, 62.75, 75, 95.75, 70, 55.75, 114, 74.75, 110.25, 205.75, 90.75, 97.25, 66.75, 78.25, 307.75, 68, 96.25)
 ```
 
 There are two main sources of uncertainty to account for:
@@ -40,7 +40,7 @@ There are other arguments you can play with as well, consult the help file for d
 ```{r fit model}
 # if required, devtools::install_github("dwarton/reginv")
 library(reginv)
-ft = est_cutt(deer,deerSds,K=15000) # takes maybe a minute to run
+ft = est_cutt(deer,deerSds,K=14250) # takes maybe a minute to run
 ft
 ```
 
@@ -50,7 +50,7 @@ This code takes a fair while to run (maybe a minute?) because it is doing a lot 
 
 A faster alternative method is to use inversion form the chi-squared distribution
 ```{r fit modelMLE}
-est_cutt(deer,deerSds,K=15000,method="mle")
+est_cutt(deer,deerSds,K=14250,method="mle")
 ```
 
 This ended up returning similar values, but in cases where measurement error is small it tends to return confidence intervals that are too short.
@@ -66,29 +66,27 @@ The `est_cutt` function uses a new technique based on modelling fossil ages usin
 
 A truncated normal distribution could also be used (and is a special case of the T, where degrees of freedom is infinite) but I have noticed that measurement error seems to be long-tailed relative to the normal so the T tends to provide a better fit to data. Departures from uniform deposition rate could also be considered but usually I think there is not enough information to estimate a plausible alternative.
 
-Considering our red deer dataset:
+Considering our Irish Elk dataset:
 ```{r hist}
 hist(deer)
 ```
 
-Note that the histogram has a left-skewed distribution. This is what we would expect from a CUTT distribution:
+While this looks fairly symmetrical, the model we are fitting actually expects this distribution to be left-skewed:
 
 ```{r dcutt}
 library(reginv)
-xs=seq(10000,15000,length=100)
-ds = dcutt(xs,12000,K=15000,sd=mean(deerSds),df=3)
+xs=seq(12300,14250,length=100)
+ds = dcutt(xs,12500,K=14250,sd=mean(deerSds),df=3)
 plot(xs,ds,type="l")
 ```
 
-The left-tail comes from measurement error. The assumed extinction time for this particular distribution is about halfway down this curve at 12000. The curve flattens out to the right away from the extinction time, due to the uniform assumption on deposition rates.
+The left-tail comes from measurement error. The assumed extinction time for this particular distribution is about halfway down this curve at 12500. The curve flattens out to the right away from the extinction time, due to the uniform assumption on deposition rates.
 
-Note that the above curve is steeper than what is suggested by the histogram -- this suggests that either the uniform deposition assumption is not valid, with a decay in deposition rates as we approach extinction, or it means that measurement error variance was underestimated.
-
-As with any parametric assumptions we make of data, we can check this against the data we have to see if it is plausible -- I would suggest doing so using a qqplot as follows:
+It is hard to compare histograms to check assumptions, unless you have a big sample size. I would suggest constructing a qqplot against the best-fitting CUTT distribution as follows:
 
 ```{r qqplot}
 # install.packages("ecostats") #if you don't already have the ecostats package installed
-ecostats::qqenvelope(qnorm(pcutt(deer,ft$theta[2],sd=deerSds,K=15000,df=ft$df)))
+ecostats::qqenvelope(qnorm(pcutt(deer,ft$theta[2],sd=deerSds,K=14250,df=ft$df)))
 ```
 
-This code constructs residuals for your data, from the CUTT model fitted to it, and maps them to a standard normal distribution to make it easier visually to check assumptions. The shaded region is a 95% global envelope, meaning that we expect all points to be inside it if assumptions were satisfied. In the above plot we have a couple of points just outside, suggesting modest evidence of violation of assumptions in the CUTT model, with a couple of the more recent fossils having slightly lower values than expected by the CUTT model. This doesn't look like a big problem.
+This code constructs residuals for your data, from the CUTT model fitted to it, and maps them to a standard normal distribution to make it easier visually to check assumptions. The shaded region is a 95% global envelope, meaning that we expect all points to be inside it if assumptions were satisfied. In the above plot we have all points inside, and generally close to the one-to-one line, suggesting no evidence against the CUTT distribution in this case.
