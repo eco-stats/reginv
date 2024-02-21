@@ -98,7 +98,7 @@ est_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
       ftI = reginv_cutt(ages,sd,K,df,q=q[iQ],paramInits=paramInits,iterMax=iterMax,method=regMethod)
       result$theta[iQ] = ftI$theta[1]
       result$error[iQ] = ftI$error[1]
-      result$df        = ftI$df
+      result$df        = ftI$df[1]
       result$iter[iQ]  = ftI$iter[1]
       result$converged[iQ] = ftI$converged[1]
     }
@@ -107,7 +107,7 @@ est_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
   }
   else
   {
-    result = mle_cutt(ages, sd, K, df=Inf, q=q)
+    result = mle_cutt(ages, sd, K, df=NULL, q=q)
   }
   class(result) = "est_cutt"
   result$call   = match.call()

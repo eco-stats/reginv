@@ -38,13 +38,13 @@ To use the `est_cutt` function from the `reginv` package, you need to specify as
 There are other arguments you can play with as well, consult the help file for details.
 
 ```{r fit model}
-# if required, devtools::install_github("dwarton/reginv")
+# if required, devtools::install_github("eco-stats/reginv")
 library(reginv)
-ft = est_cutt(deer,deerSds,K=14250) # takes maybe a minute to run
-ft
+deerFt = est_cutt(deer,deerSds,K=14250) # takes maybe a minute to run
+deerFt
 ```
 
-This returns a point estimate for extinction of `r format(ft$theta[2], scientific=FALSE)` BP, and by default, it also includes a 95% confidence interval for it, which in this case extends a couple of centuries either side of `r format(ft$theta[2], scientific=FALSE)` BP.
+This returns a point estimate for extinction of `r format(deerFt$theta[2], scientific=FALSE)` BP, and by default, it also includes a 95% confidence interval for it, which in this case extends a couple of centuries either side of `r format(deerFt$theta[2], scientific=FALSE)` BP.
 
 This code takes a fair while to run (maybe a minute?) because it is doing a lot of work in the background. By default, unless measurement error is large, it uses a new method called _regression inversion_ (`method="reginv"`) which computes a maximum likelihood estimator under the CUTT model (see below), then repeatedly simulates new data at different potential extinction times in order to find a range that is plausible considering the estimators obtained from simulated data.
 
@@ -60,21 +60,20 @@ This is much faster because it doesn't simulate new values for the estimator, it
 
 The `est_cutt` function uses a new technique based on modelling fossil ages using a Compound Uniform -- Truncated T (CUTT) distribution. Using this distribution assumes
 
-- That, for a fossil of a given age, measurement error estimating its age follows a distribution that is Student's T multiplied by the provided standard deviation, truncated such that observed age is less than K
+- That, for a fossil of a given age, measurement error estimating its age follows a distribution that is Student's T multiplied by the provided standard deviation, truncated such that observed age is less than K. Unless it is specified, the degrees of freedom of the T distribution are estimated from the data (and need not be a whole number)
 
-- That fossil dates are uniformly distributed over the interval of allowable dates
+- That deposition rates of fossils is uniformly distributed over the interval of allowable dates
 
-A truncated normal distribution could also be used (and is a special case of the T, where degrees of freedom is infinite) but I have noticed that measurement error seems to be long-tailed relative to the normal so the T tends to provide a better fit to data. Departures from uniform deposition rate could also be considered but usually I think there is not enough information to estimate a plausible alternative.
+A truncated normal distribution could also be used (and is a special case of the T, where degrees of freedom is infinite) but we have noticed that measurement error seems to be long-tailed relative to the normal so the T tends to provide a better fit to data. Departures from uniform deposition rate could also be considered but usually I think there is not enough information to estimate a plausible alternative.
 
 Considering our Irish Elk dataset:
 ```{r hist}
 hist(deer)
 ```
 
-While this looks fairly symmetrical, the model we are fitting actually expects this distribution to be left-skewed:
+While this looks fairly symmetrical, the model we are fitting actually expects this distribution to be left-skewed and shaped more like the below:
 
 ```{r dcutt}
-library(reginv)
 xs=seq(12300,14250,length=100)
 ds = dcutt(xs,12500,K=14250,sd=mean(deerSds),df=Inf)
 plot(xs,ds,type="l")
@@ -84,9 +83,8 @@ The left-tail comes from measurement error. The assumed extinction time for this
 
 It can be hard to compare a sample histogram to a density curve to check assumptions, unless you have a very big sample size. I would suggest constructing a qqplot against the best-fitting CUTT distribution as follows:
 
-```{r qqplot}
-# install.packages("ecostats") #if you don't already have the ecostats package installed
-ecostats::qqenvelope(qnorm(pcutt(deer,ft$theta[2],sd=deerSds,K=14250,df=ft$df)))
+```{r qqplot,fig.width=6}
+qqenvelope(deerFt)
 ```
 
-This code constructs residuals for your data, from the CUTT model fitted to it, and maps them to a standard normal distribution to make it easier visually to check assumptions. The shaded region is a 95% global envelope, meaning that we expect all points to be inside it if assumptions were satisfied. In the above plot we have all points inside, and generally close to the one-to-one line, suggesting no evidence against the CUTT distribution in this case.
+The shaded region is a 95% global envelope, and if data followed the CUTT distribution with parameters as stored in `deerFt` then we would expect all points to be inside it. In the above plot we have all points inside, and generally close to the one-to-one line, suggesting no evidence against the CUTT distribution in this case.
