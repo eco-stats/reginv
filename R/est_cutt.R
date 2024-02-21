@@ -66,8 +66,8 @@
 #' @examples
 #' ages = rcutt(20, 10000, K=25000, sd=1000) #simulating some random data
 #' 
-#' # for a point estimate together with a 95% CI
-#' est_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=400) 
+#' # for a point estimate together with a 95% CI (only 200 iterations used so it runs quickly)
+#' est_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=200) 
 #' 
 #' # compare to estimates using asymptotic likelihood inference, which tend to
 #' # be narrower and have poorer coverage when measurement error is small
@@ -77,7 +77,7 @@
 #' ages5 = rcutt(20, 10000, K=25000, sd=5000)
 #' 
 #' # note this will run faster because it will call method-for a point estimate together with a 95% CI
-#' est_cutt(ages=ages5, sd=5000, K=25000, alpha=0.05, iterMax=500) 
+#' est_cutt(ages=ages5, sd=5000, K=25000, alpha=0.05) 
 
 est_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), method=if(mean(sd)/(K-min(ages))<0.1) "reginv" else "mle", paramInits=NULL, iterMax=1000)
 {  

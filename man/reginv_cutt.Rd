@@ -83,8 +83,8 @@ If there is interest in estimating speciation or invasion time, data would only 
 \examples{
 ages = rcutt(20, 10000, K=25000, sd=500) #simulating some random data
 
-# for a point estimate together with a 95\% CI
-reginv_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=400) 
+# for a point estimate together with a 95\% CI (only 200 iterations used so it runs quickly)
+reginv_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=200) 
 
 # compare to estimates using asymptotic likelihood inference, which tend to
 # be narrower and have poorer coverage (they miss the true value too often

@@ -2,7 +2,12 @@
 title: Estimating extinction time from the fossil record accounting for measurement error
 author: "David Warton"
 date: "`r Sys.Date()`"
-output: html_document
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Estimating extinction time from the fossil record accounting for measurement error}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+
 ---
 
 ```{r setup, include=FALSE}
@@ -67,13 +72,13 @@ The `est_cutt` function uses a new technique based on modelling fossil ages usin
 A truncated normal distribution could also be used (and is a special case of the T, where degrees of freedom is infinite) but we have noticed that measurement error seems to be long-tailed relative to the normal so the T tends to provide a better fit to data. Departures from uniform deposition rate could also be considered but usually I think there is not enough information to estimate a plausible alternative.
 
 Considering our Irish Elk dataset:
-```{r hist}
+```{r hist,fig.width=4}
 hist(deer)
 ```
 
 While this looks fairly symmetrical, the model we are fitting actually expects this distribution to be left-skewed and shaped more like the below:
 
-```{r dcutt}
+```{r dcutt,fig.width=4}
 xs=seq(12300,14250,length=100)
 ds = dcutt(xs,12500,K=14250,sd=mean(deerSds),df=Inf)
 plot(xs,ds,type="l")
@@ -83,7 +88,7 @@ The left-tail comes from measurement error. The assumed extinction time for this
 
 It can be hard to compare a sample histogram to a density curve to check assumptions, unless you have a very big sample size. I would suggest constructing a qqplot against the best-fitting CUTT distribution as follows:
 
-```{r qqplot,fig.width=6}
+```{r qqplot,fig.width=4}
 qqenvelope(deerFt)
 ```
 

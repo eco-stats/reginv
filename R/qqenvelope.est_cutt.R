@@ -22,7 +22,7 @@
 #' @param envelope.col color of the global envelope around the expected trend. All data points should always stay within this envelope
 #' (and will for a proportion \code{conf.level} of datasets satisfying model assumptions).
 #' @param plot.it logical. Should the result be plotted? If not, a list of analysis outputs is returned, see \emph{Value}.
-#' @param ... further arguments sent through to \code{plotenvelope}
+#' @param ... further arguments sent through to \code{plotenvelope} and \code{plot}.
 #' 
 #' @details
 #' This function constructs a qqplot to check if a set of fossil ages are consistent with a \code{\link{cutt}}
@@ -54,18 +54,26 @@
 #' 
 #' @seealso \code{\link{cutt}}, \code{\link{est_cutt}}, \code{\link{qqnorm}}, \code{\link{qqenvelope}} 
 #' @examples
-#' deer = c(14215.25, 14234.5, 14160, 14095.5, 14059.75, 13984.5, 13884.75, 13864, 13854, 13844.5, 13675.5, 13664.25, 13624.25, 13643.5, 13589.75, 13576.5, 13490.75, 13445, 13431.25, 13399.5, 13379.25, 13382.75, 13357.5, 13348.5, 13347.25, 13340.25, 13258.75, 13192.75, 13192.75, 13189.5, 13182.25, 13033.5, 13022.25, 12956.5, 12825.75, 12839.75, 12860.25, 12791.25, 12779.75, 12693.25, 12628.75, 12739.75, 12591.5, 12432.75)
-#' deerSds = c(105.75, 78.5, 69.5, 102, 131.25, 120, 97.25, 89.5, 89.5, 95, 78.5, 74.75, 132.75, 94, 116.75, 119, 54.75, 119.5, 112.75, 60, 90.75, 58.25, 93, 92, 65.75, 102.25, 284.25, 102.25, 62.75, 75, 95.75, 70, 55.75, 114, 74.75, 110.25, 205.75, 90.75, 97.25, 66.75, 78.25, 307.75, 68, 96.25)
+#' deer = c(14215, 14235, 14160, 14096, 14060, 13985, 13885, 13864, 13854, 13845, 13676, 13664,
+#'  13624, 13644, 13590, 13576, 13491, 13445, 13431, 13400, 13379, 13383, 13358, 13349, 13347,
+#'  13340, 13259, 13193, 13193, 13190, 13182, 13034, 13022, 12957, 12826, 12840, 12860, 12791, 
+#'  12780, 12693, 12629, 12740, 12592, 12433)
+#' deerSds = c(105.75, 78.5, 69.5, 102, 131.25, 120, 97.25, 89.5, 89.5, 95, 78.5, 74.75, 132.75, 
+#'  94, 116.75, 119, 54.75, 119.5, 112.75, 60, 90.75, 58.25, 93, 92, 65.75, 102.25, 284.25, 
+#'  102.25, 62.75, 75, 95.75, 70, 55.75, 114, 74.75, 110.25, 205.75, 90.75, 97.25, 66.75, 78.25, 
+#'  307.75, 68, 96.25)
 #' 
 #' # get a maximum likelihood estimator and approx CIs
 #' deerFt = est_cutt(ages=deer, sd=deerSds, K=14250, method="mle") 
 #' 
 #' # do a qq plot with simulation envelope around CUTT distribution fit to deer data:
 #' qqenvelope(deerFt) 
+#' @aliases qqenvelope.est_cutt
 #' @import ecostats
+#' @importFrom grDevices adjustcolor
 #' @export
-qqenvelope.est_cutt = function (y, n.sim=199, conf.level=0.95, type="st", main = "Quantile Plot", 
-                                xlab = "Theoretical Quantiles", ylab = "Sample quantiles", col=NULL, line.col="olivedrab", 
+qqenvelope.est_cutt = function (y, n.sim=199, conf.level=0.95, ylab = "Sample quantiles", type="st", main = "Quantile Plot", 
+                                xlab = "Theoretical Quantiles", col=NULL, line.col="olivedrab", 
                                 envelope.col = adjustcolor(line.col, 0.1), plot.it = TRUE, ...)
 {  
   if(is.null(col)) col=1
