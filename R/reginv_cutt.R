@@ -42,7 +42,7 @@
 #' 
 #' @return This function returns an object of class \code{est_cutt} with the following components:
 #'
-#'  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
+#'  \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to a bias-corrected maximum likelihood estimate \code{point}, and together with confidence interval limits \code{lo} and \code{hi}.)}
 #'  \item{q}{ the vector of quantiles used in estimation.}
 #'  \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
 #'  \item{se}{ the estimated standard error of the MLE.}

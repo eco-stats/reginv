@@ -2,7 +2,11 @@
 title: Estimating extinction time from the fossil record accounting for measurement error
 author: "David Warton"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: 
+  github_document:
+    fig_width: 5
+    fig_height: 5
+bibliography: ../inst/fossils.bib
 vignette: >
   %\VignetteIndexEntry{Estimating extinction time from the fossil record accounting for measurement error}
   %\VignetteEngine{knitr::rmarkdown}
@@ -28,7 +32,8 @@ There are two main sources of uncertainty to account for:
 
 1. _Measurement error_, because fossil ages were measured with uncertainty (whose standard deviation is assumed to be known in the below).
 
-Currently, methods in the literature account for one or other of these quantities, but typically not both. Classical estimators (Strauss, McInerney's, _etc_) account for sampling error only, GRIWM constructs confidence intervals which account for measurement error but don't actually deal with sampling error in CI construction.
+Currently, methods in the literature account for one or other of these quantities, but typically not both. Classical estimators [e.g. @strauss_classical_1989;@mcinerny_significance_2006]
+account for sampling error only, `GRIWM` [@bradshaw_robust_2012] constructs confidence intervals which account for measurement error but don't actually deal with sampling error in CI construction.
 
 The `est_cutt` function in the `reginv` package accounts for both, and produces nearly unbiased estimates of extinction time and confidence intervals that are close to exact, when assumptions are satisfied.
 
@@ -45,7 +50,7 @@ There are other arguments you can play with as well, consult the help file for d
 ```{r fit model}
 # if required, devtools::install_github("eco-stats/reginv")
 library(reginv)
-deerFt = est_cutt(deer,deerSds,K=14250) # takes maybe a minute to run
+deerFt = est_cutt(deer, deerSds, K=14250) # takes maybe a minute to run
 deerFt
 ```
 
@@ -63,11 +68,11 @@ This is much faster because it doesn't simulate new values for the estimator, it
 
 ## Model - the CUTT distribution
 
-The `est_cutt` function uses a new technique based on modelling fossil ages using a Compound Uniform -- Truncated T (CUTT) distribution. Using this distribution assumes
+The `est_cutt` function uses a new technique based on modelling fossil ages using a Compound Uniform -- Truncated T (CUTT) distribution. Using this distribution assumes that:
 
-- That, for a fossil of a given age, measurement error estimating its age follows a distribution that is Student's T multiplied by the provided standard deviation, truncated such that observed age is less than K. Unless it is specified, the degrees of freedom of the T distribution are estimated from the data (and need not be a whole number)
+- for a fossil of a given age, measurement error estimating its age follows a distribution that is Student's T multiplied by the provided standard deviation, truncated such that observed age is less than K. Unless it is specified, the degrees of freedom of the T distribution are estimated from the data (and need not be a whole number)
 
-- That deposition rates of fossils is uniformly distributed over the interval of allowable dates
+- deposition rates of fossils is uniformly distributed over the interval of allowable dates
 
 A truncated normal distribution could also be used (and is a special case of the T, where degrees of freedom is infinite) but we have noticed that measurement error seems to be long-tailed relative to the normal so the T tends to provide a better fit to data. Departures from uniform deposition rate could also be considered but usually I think there is not enough information to estimate a plausible alternative.
 
@@ -84,7 +89,7 @@ ds = dcutt(xs,12500,K=14250,sd=mean(deerSds),df=Inf)
 plot(xs,ds,type="l")
 ```
 
-The left-tail comes from measurement error. The assumed extinction time for this particular distribution is about halfway down this curve at 12500. The curve flattens out to the right away from the extinction time, due to the uniform assumption on deposition rates.
+The left-tail comes from measurement error. The extinction time for this particular distribution is about halfway down the curve at 12500. The curve flattens out to the right away from the extinction time, due to the uniform assumption on deposition rates.
 
 It can be hard to compare a sample histogram to a density curve to check assumptions, unless you have a very big sample size. I would suggest constructing a qqplot against the best-fitting CUTT distribution as follows:
 
@@ -92,4 +97,6 @@ It can be hard to compare a sample histogram to a density curve to check assumpt
 qqenvelope(deerFt)
 ```
 
-The shaded region is a 95% global envelope, and if data followed the CUTT distribution with parameters as stored in `deerFt` then we would expect all points to be inside it. In the above plot we have all points inside, and generally close to the one-to-one line, suggesting no evidence against the CUTT distribution in this case.
+The shaded region is a 95% global envelope, and if data followed the CUTT distribution with parameters as stored in `deerFt` then we would expect all points to be inside it. In the above plot we have all points inside, and generally close to the one-to-one line, suggesting no evidence against the CUTT distribution in this case (hence the above analyses are based on reasonable assumptions in this case).
+
+## References
