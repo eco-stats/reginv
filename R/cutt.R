@@ -169,12 +169,14 @@ dcutt = function(x,theta,K,sd,df=Inf,log=FALSE)
   if(log)
   {
     pdf = funs$CDF(xSD,df,log.p=TRUE) - log(Cinv)
-    pdf[x>K] = -Inf
+    pdf[x>K] = -Inf # since x<K
+    pdf[sd==0 & x<theta] = -Inf # since, for sigma=0, theta<x<K
   }
   else
   {
     pdf = funs$CDF(xSD,df)/Cinv
-    pdf[x>K] = 0
+    pdf[x>K] = 0 # since x<K
+    pdf[sd==0 & x<theta] = 0 # since, for sigma=0, theta<x<K
   }
   return(pdf)
 }
