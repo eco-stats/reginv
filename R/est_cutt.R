@@ -107,7 +107,7 @@ est_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
   }
   else
   {
-    result = mle_cutt(ages, sd, K, df=NULL, q=q)
+    result = mle_cutt(ages, sd, K, df=df, q=q)
   }
   class(result) = "est_cutt"
   result$call   = match.call()

@@ -43,7 +43,7 @@ likelihood-based inference is used via \code{\link{mle_cutt}}.}
 \value{
 This function returns an object of class "reginv" with the following components:
 
- \item{theta}{ a maximum likelihood estimator of \code{theta}.}
+ \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}, defaulting to to the maximum likelihood estimate \code{point} (with bias-correction if \code{method="reginv"}), together with confidence interval limits \code{lo} and \code{hi}.)}
  \item{se}{ the estimated standard error of the MLE.}
  \item{q}{ the vector of quantiles used in estimation (if applicable).}
  \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}

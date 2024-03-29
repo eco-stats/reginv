@@ -39,11 +39,10 @@ TRUE uses a Wald interval (which has very poor performance for small sample size
 TRUE uses a Wald interval (which has very poor performance for small sample sizes!)}
 }
 \value{
-This function returns an object of class "est_cutt" with the following components:
+This function returns an object of class \code{est_cutt} with the following components:
 
- \item{theta}{ a maximum likelihood estimator of \code{theta}.}
+ \item{theta}{ a vector of estimated extinction times: by default the maximum likelihood estimator as \code{point}, and confidence interval limits are returned as \code{lo} and \code{hi}.}
  \item{se}{ the estimated standard error of the MLE.}
- \item{ci}{ a vector of confidence limits for \code{theta} at the chosen confidence levels.}
  \item{q}{ the vector of quantiles used in estimation (if applicable).}
  \item{df}{ the estimated degrees of freedom of the Student's T distribution for measurement error.}
  \item{data}{ a data frame with the data used in analysis, in columns labelled as \code{ages} and \code{sd}}

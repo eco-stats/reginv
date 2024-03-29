@@ -64,7 +64,6 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
   # define getErr functions (to avoid repeated if statements in estimation)
   if(method=="rq"||method=="wrq"||method=="rq2")
   {
-    q = 1-q # flipping quantile is needed when using this approach
     getErr = function(newtheta,qfit,t_obs,q) # getting the SE of predictions 
     {
       prEst = try(predict(qfit,newdata=list(theta=newtheta),interval="confidence"),silent=TRUE)
@@ -138,10 +137,10 @@ updateTheta = function(stats,t_obs,q,qfit=NULL,method="rq",screenStats=NULL)
   if(is.null(qfit))
   {
     ft = switch(method,
-                "rq" = quantreg::rq(T~theta,tau=q,data=stats), #consider varying rq method, "fn" or "pfn"
-                "rq2" = quantreg::rq(T~poly(theta,2,raw=TRUE),tau=q,data=stats), #consider varying rq method, "fn" or "pfn"
+                "rq" = quantreg::rq(T~theta,tau=1-q,data=stats), #consider varying rq method, "fn" or "pfn"
+                "rq2" = quantreg::rq(T~poly(theta,2,raw=TRUE),tau=1-q,data=stats), #consider varying rq method, "fn" or "pfn"
                 #           "qgam" = qgam::qgam(T~s(theta), qu=q, data=stats),
-                "wrq" = quantreg::rq(T~theta,tau=q,weights=wt,data=stats),
+                "wrq" = quantreg::rq(T~theta,tau=1-q,weights=wt,data=stats),
                 "lm" = lm(T~theta,data=stats),
                 glm(I(T>t_obs)~theta,family=binomial("probit"),data=stats)
     )
@@ -195,7 +194,7 @@ getThetaSim = function(iter,thetaEst,thetaSims,a)
   # a tells us how much to weight mean of all obs compared to current obs
   thetaNew = (a*iter+1-a)*thetaEst - a*sum(thetaSims)
   # put bounds on thetaNew so no crazy shit
-  #  if(a>0) 
+  #  if(a>0)  
     thetaNext = noOutliers(thetaNew,thetaSims)
   # thetaNext=thetaNew
   return(thetaNext)

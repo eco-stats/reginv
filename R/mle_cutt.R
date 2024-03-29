@@ -148,7 +148,7 @@ getThetaMLE = function(ages, theta=min(ages), sd, K, df )
   if(all(sd==0))
     thetaMLE = list( par=min(ages), value=length(ages)*log(1/(K-min(ages))), hessian=-Inf )
   else
-    thetaMLE = optim(theta,cutt_LogLik,ages=ages,sd=sd,K=K,df=df,method="Brent",lower=-1/sqrt(.Machine$double.eps),upper=K,control=list(trace=TRUE,fnscale=-1),hessian=TRUE)
+    thetaMLE = optim(theta,cutt_LogLik,ages=ages,sd=sd,K=K,df=df,method="Brent",lower=-1/sqrt(.Machine$double.eps),upper=K+mean(sd),control=list(trace=TRUE,fnscale=-1),hessian=TRUE)
   return(thetaMLE)
 }
 
@@ -162,14 +162,14 @@ getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5
     cond  = FALSE
     MLE   = optim(theta, cutt_LogLik, 
                  ages=ages, sd=sd, K=K, df=df, method="Brent",
-                 lower=-1/sqrt(.Machine$double.eps), upper=K, control=list(trace=TRUE,fnscale=-1))
+                 lower=-1/sqrt(.Machine$double.eps), upper=K+mean(sd), control=list(trace=TRUE,fnscale=-1))
     while(cond==FALSE)
     {
       pre   = MLE
       df    = getDF( ages, theta=MLE$par, sd=sd, K=K, dfInvInit=1/df, dfMin=dfMin )$par
       MLE   = optim( pre$par, cutt_LogLik, 
                    ages=ages, sd=sd, K=K, df=df, method="Brent",
-                   lower=-1/sqrt(.Machine$double.eps), upper=K, control=list(trace=TRUE,fnscale=-1) )
+                   lower=-1/sqrt(.Machine$double.eps), upper=K+mean(sd), control=list(trace=TRUE,fnscale=-1) )
       eps   = abs(pre$value-MLE$value)
       cond  = eps<tol | iIter>=nIter
       iIter = iIter+1

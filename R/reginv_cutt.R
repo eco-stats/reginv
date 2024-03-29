@@ -4,7 +4,7 @@
 #' are plausible considering the maximum likelihood estimator of the most recently observed fossil. This is done assuming fossil dates come from a
 #' a compound uniform-truncated T distribution, which accounts for sampling error (the fact that the most recent fossil date is not necessarily
 #' the most recent time that the species was extant) and measurement error (error dating fossils).
-#' Usually takes a few seconds to run, because it is doing a lot of computation behind the scenes. 
+#' Usually takes a while to run (but less than a minute), because it is doing a lot of computation behind the scenes. 
 #'
 #' @param ages Numeric vector of fossil ages, with smaller values being more recent fossil ages.
 #' @param sd Numeric vector of measurement error standard deviations for each fossil (listed in the same order as they appear in \code{ages}).
@@ -115,7 +115,7 @@ reginv_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.
     }
     # call reginv
     resulti = reginv(data=ages,getT=getThMLE,simulateData=simFn_cutt,paramInits=paramInits,
-                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, dat=ages, method=method,stats=stats)
+                        q=q[iQ],iterMax=iterMax,K=K,sd=sd, df=df, n=n, dat=ages, method=method,stats=stats,eps=1.e-15)
     result$theta[[iQ]] = resulti$theta
     result$error[[iQ]] = resulti$error
     result$iter[[iQ]]  = resulti$iter
@@ -132,7 +132,7 @@ reginv_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.
 
 simFn_cutt = function (theta, K, sd, df, n=length(sd), dat)
 {
-  if(theta>K) #trying to game it to push estimates away from K 
+  if(theta>K+mean(sd)) #trying to game it to push estimates away from K 
     W = rep(theta,n)
   else
   {
@@ -144,7 +144,7 @@ simFn_cutt = function (theta, K, sd, df, n=length(sd), dat)
 
 getThMLE = function (ages, K, sd, df, n=length(ages), dat=NULL )
 {
-  if(all(ages>K))
+  if(all(ages>K+mean(sd)))
     theta = min(ages)
   else
     theta = mle_cutt(ages, sd, K, df=df, alpha=NULL )$theta

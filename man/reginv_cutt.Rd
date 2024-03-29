@@ -44,7 +44,7 @@ high influence points, \code{method='prob'} uses linear probit regression on an 
 \value{
 This function returns an object of class \code{est_cutt} with the following components:
 
- \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to the lower limit for a \code{100(1-alpha)}\% confidence interval, a point estimate at \code{q=0.5} ("best estimate" of extinction time), and an upper limit for a \code{100(1-alpha)}\% confidence interval.)}
+ \item{theta}{ a vector of estimated extinction times at each of a set of quantiles specified in \code{q}. (If \code{q} was not specified as input, this defaults to a bias-corrected maximum likelihood estimate \code{point}, and together with confidence interval limits \code{lo} and \code{hi}.)}
  \item{q}{ the vector of quantiles used in estimation.}
  \item{error}{ Monte Carlo standard error estimating each of these values, as estimated from the regression. }
  \item{se}{ the estimated standard error of the MLE.}
@@ -60,7 +60,7 @@ Estimates a confidence interval for extinction time using regression inversion, 
 are plausible considering the maximum likelihood estimator of the most recently observed fossil. This is done assuming fossil dates come from a
 a compound uniform-truncated T distribution, which accounts for sampling error (the fact that the most recent fossil date is not necessarily
 the most recent time that the species was extant) and measurement error (error dating fossils).
-Usually takes a few seconds to run, because it is doing a lot of computation behind the scenes.
+Usually takes a while to run (but less than a minute), because it is doing a lot of computation behind the scenes.
 }
 \details{
 Given a vector of fossil ages \code{ages} and corresponding measurement error standard deviations \code{sd}, and an upper limit \code{K} for the possible age of a fossil
