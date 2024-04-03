@@ -156,7 +156,7 @@ getThetaMLE = function(ages, theta=min(ages), sd, K, df )
 getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5, dfMin=4 )
 {
   if(all(sd==0))
-    MLE = list( par=c(min(ages),Inf), value=length(ages)*log(1/(K-min(ages))), hessian=matrix(-Inf,2,2) )
+    MLE = list( par=c(min(ages),0), value=length(ages)*log(1/(K-min(ages))), hessian=matrix(-Inf,2,2) )
   else
   {
     iIter = 1
@@ -185,7 +185,7 @@ getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5
 getDF = function( ages, theta, sd, K, dfInvInit=0, dfMin=4 )
 {
   if(all(sd==0))
-    res = list( par=Inf, value=length(ages)*log(1/(K-min(ages))) )
+    res = list( par=0, value=length(ages)*log(1/(K-theta)) )
   else
   {
     dfInv = optim( dfInvInit, cutt_LogLikT, ages=ages, sd=sd, theta=theta, K=K, dfMin=dfMin, method="Brent", 
