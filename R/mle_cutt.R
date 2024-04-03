@@ -116,7 +116,7 @@ mle_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
       searchLim   = ifelse( is_SE_bad, IQR(ages)*0.5, SE*5 )
       qLo = qHi   = rep(thetaMLE$par,nQ)
       qLo[q<=0.5] = thetaMLE$par-searchLim
-      qHi[q>=0.5] = min(thetaMLE$par+searchLim,K)
+      qHi[q>=0.5] = min(thetaMLE$par,K)+searchLim
       # note LRT function is increasing for q>0.5 
       dir         = rep("downX",nQ)
       dir[q>=0.5] ="upX"
