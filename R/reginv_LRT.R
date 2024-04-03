@@ -1,4 +1,95 @@
 #' @export
+boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), iterMax=1000, dfMin=4)
+{  
+  # set up result list.
+  theta = rep(NA,length(q))
+  if(is.null(names(q)))
+    names(theta)=paste0("q=",q)
+  else
+    names(theta)=names(q)
+
+  # get MLE and define get_LRTi function
+  if(is.null(df))
+  {
+    mles = reginv:::getJointMLE(ages=ages, theta=min(ages), sd=sd, K=K, dfMin=dfMin)
+    thetaMLE = list(par=mles$par[1],value=mles$value)
+    dfOut = 1/mles$par[2]
+    vr = try( solve(-mles$hessian) )
+    if(inherits(vr,"try-error")) vr=matrix(NaN,2,2)
+    SE = if(is.nan(vr[1,1])) 0 else as.vector(sqrt(vr[1,1]))
+    
+    # define get_LRTi function
+    get_LRTi = function(theta0, ages, K, sd, df=Inf, const=0, dfMin=dfMin)
+    {
+      ll1  = reginv:::getJointMLE(ages=ages, theta=theta0, sd=sd, K=K, df=df)
+      ll0  = reginv:::getDF( ages, theta=theta0, sd=sd, K=K, dfInvInit=1/df, dfMin=dfMin )
+      return(sign(theta0-ll1$par[1])*sqrt(-2*(ll0$value-ll1$value)) - const)
+    }
+  }
+  else
+  {
+    dfOut=df
+    thetaMLE = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
+    SE = as.vector(1/sqrt(-thetaMLE$hessian))
+    
+    # define get_LRTi function
+    get_LRTi = function(theta0, ages, K, sd, df=dfOut, const=0, dfMin=dfMin)
+    {
+      ll1  = reginv:::getThetaMLE(ages, theta=theta0, sd=sd, K=K, df=df )
+      ll0  = reginv:::cutt_LogLik(theta0,ages,sd=sd,K=K,df=df)
+      return(sign(theta0-ll1$par)*sqrt(-2*(ll0$value-ll1$value)) - const)
+    }
+  }
+
+  # get LRs
+  LRs = rep(NA,iterMax)
+  n = length(ages)
+  thMLE = thetaMLE$par
+  # resample iterMax times
+  for(b in 1:iterMax)
+  {
+    ageStar = rcutt(n,thMLE,K,sd,df=dfOut)
+    LRs[b]  = get_LRTi(thMLE,ages=ageStar,K=K,sd=sd,df=dfOut, dfMin=dfMin)
+  }
+  # get sample quantiles of LRT
+  qLR = quantile(LRs, q, na.rm=TRUE)
+  
+  dir="upX" #increasing function of theta
+
+  # set search limits so that we look above MLE if q>0.5 and below otherwise 
+  is_SE_bad   = is.nan(SE) | is.infinite(SE) | SE==0
+  searchLim   = ifelse( is_SE_bad, IQR(ages)*0.5, SE*5 )
+  qLo = qHi   = rep(thMLE,length(q))
+  qLo[q<=0.5] = thMLE-searchLim
+  qHi[q>=0.5] = min(thMLE+searchLim,K)
+  
+  # get results for each value of q
+  for (iQ in 1:length(q))
+  {
+#   to check problematic cases
+#    ths = seq(qLo[2],qHi[2],length=100)
+#    lrs=rep(NA,100)
+#    for(i in 1:100) lrs[i] = get_LRTi(ths[i],ages=ages,K=K,sd=sd,dfOut,const=0,dfMin)
+#    plot(lrs~ths)
+
+    if(q[iQ]==0.5)
+      theta[iQ] = thMLE
+    else
+    {
+      thLim = try( uniroot(f=get_LRTi, interval=c(qLo[iQ],qHi[iQ]), ages=ages, K=K, sd=sd, df=dfOut, const=qLR[iQ], dfMin=dfMin, extendInt=dir) )
+      if(inherits(thLim,"try-error"))
+          theta[iQ] = thetaMLE$par
+      else
+          theta[iQ] = thLim$root
+    }
+  }
+  result = list(theta = theta, se=thetaMLE$se, df=dfOut, data = data.frame(ages=ages, sd=sd), method = "reginv", call = match.call() )
+  class(result) = "est_cutt"
+  return(result)
+}
+
+
+#' @export
 reginv_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), iterMax=1000, method="rq")
 {  
   
@@ -79,7 +170,7 @@ reginv_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5
   return(result)
 }
 
-get_LRT = function(theta0,ages, K, sd, df)
+get_LRT = function(theta0, ages, K, sd, df)
 {
   thetaMLE = reginv:::getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
   ll0 = reginv:::cutt_LogLik(theta0,ages,sd=sd,K=K,df=df)

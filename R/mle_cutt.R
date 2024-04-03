@@ -152,7 +152,7 @@ getThetaMLE = function(ages, theta=min(ages), sd, K, df )
   return(thetaMLE)
 }
 
-getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5, dfMin=3 )
+getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5, dfMin=4 )
 {
   if(all(sd==0))
     MLE = list( par=c(min(ages),Inf), value=length(ages)*log(1/(K-min(ages))), hessian=matrix(-Inf,2,2) )
