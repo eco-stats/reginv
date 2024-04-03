@@ -185,7 +185,7 @@ getJointMLE = function(ages, theta=min(ages), sd, K, df=Inf, nIter=10, tol=1.e-5
 getDF = function( ages, theta, sd, K, dfInvInit=0, dfMin=4 )
 {
   if(all(sd==0))
-    res = list( par=0, value=length(ages)*log(1/(K-theta)) )
+    res = list( par=Inf, value=length(ages)*log(1/(K-theta)) )
   else
   {
     dfInv = optim( dfInvInit, cutt_LogLikT, ages=ages, sd=sd, theta=theta, K=K, dfMin=dfMin, method="Brent", 
