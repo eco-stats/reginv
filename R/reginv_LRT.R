@@ -11,7 +11,7 @@ boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
   # get MLE and define get_LRTi function
   if(is.null(df))
   {
-    mles = reginv:::getJointMLE(ages=ages, theta=min(ages), sd=sd, K=K, dfMin=dfMin)
+    mles = getJointMLE(ages=ages, theta=min(ages), sd=sd, K=K, dfMin=dfMin)
     thetaMLE = list(par=mles$par[1],value=mles$value)
     dfOut = 1/mles$par[2]
     vr = try( solve(-mles$hessian) )
@@ -19,10 +19,10 @@ boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
     SE = if(is.nan(vr[1,1])) 0 else as.vector(sqrt(vr[1,1]))
     
     # define get_LRTi function
-    get_LRTi = function(theta0, ages, K, sd, df=Inf, const=0, dfMin=dfMin)
+    get_LRTi = function(theta0, ages, K, sd, df=dfOut, const=0, dfMin=dfMin)
     {
-      ll1  = reginv:::getJointMLE(ages=ages, theta=theta0, sd=sd, K=K, df=df)
-      ll0  = reginv:::getDF( ages, theta=theta0, sd=sd, K=K, dfInvInit=1/df, dfMin=dfMin )
+      ll1  = getJointMLE(ages=ages, theta=theta0, sd=sd, K=K, df=df)
+      ll0  = getDF( ages, theta=theta0, sd=sd, K=K, dfInvInit=1/df, dfMin=dfMin )
       return(sign(theta0-ll1$par[1])*sqrt(-2*(ll0$value-ll1$value)) - const)
     }
   }
@@ -34,9 +34,9 @@ boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
     
     # define get_LRTi function
     get_LRTi = function(theta0, ages, K, sd, df=dfOut, const=0, dfMin=dfMin)
-    {
-      ll1  = reginv:::getThetaMLE(ages, theta=theta0, sd=sd, K=K, df=df )
-      ll0  = reginv:::cutt_LogLik(theta0,ages,sd=sd,K=K,df=df)
+      {
+      ll1  = getThetaMLE(ages, theta=theta0, sd=sd, K=K, df=df )
+      ll0  = cutt_LogLik(theta0,ages,sd=sd,K=K,df=df)
       return(sign(theta0-ll1$par)*sqrt(-2*(ll0$value-ll1$value)) - const)
     }
   }
@@ -133,10 +133,10 @@ reginv_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5
       stats=data.frame(theta=NULL,Tnew=NULL,Tobs=NULL, df=NULL)
       for(i in 1:length(paramInits) )
       {
-        if( is.null(df) )  dfi = reginv:::getDF(ages, theta=paramInits[i], sd=sd, K=K)$par
+        if( is.null(df) )  dfi = getDF(ages, theta=paramInits[i], sd=sd, K=K)$par
         statObs=get_LRT(paramInits[i],ages, K=K, sd=sd, df=dfi)
-        newDat = reginv:::simFn_cutt(theta=paramInits[i],K=K,sd=sd,df=dfi,n=n,dat=ages)
-        if( is.null(df) )  dfn = reginv:::getDF(newDat, theta=paramInits[i], sd=sd, K=K)$par
+        newDat = simFn_cutt(theta=paramInits[i],K=K,sd=sd,df=dfi,n=n,dat=ages)
+        if( is.null(df) )  dfn = getDF(newDat, theta=paramInits[i], sd=sd, K=K)$par
         statNew=get_LRT(paramInits[i],newDat, K=K, sd=sd, df=dfn)
         stats = rbind(stats, c(theta=paramInits[i], Tnew = statNew, Tobs=statObs, df=dfn) )
       }      
@@ -149,10 +149,10 @@ reginv_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5
       {
         iter=iter+1
         
-        if( is.null(df) )  dfi = reginv:::getDF(ages, theta=res$theta, sd=sd, K=K)$par
+        if( is.null(df) )  dfi = getDF(ages, theta=res$theta, sd=sd, K=K)$par
         statObs=get_LRT(res$theta,ages, K=K, sd=sd, df=dfi)
-        newDat = reginv:::simFn_cutt(theta=res$theta,K=K,sd=sd,df=dfi,n=n,dat=ages)
-        if( is.null(df) )  dfn = reginv:::getDF(newDat, theta=res$theta, sd=sd, K=K)$par
+        newDat = simFn_cutt(theta=res$theta,K=K,sd=sd,df=dfi,n=n,dat=ages)
+        if( is.null(df) )  dfn = getDF(newDat, theta=res$theta, sd=sd, K=K)$par
         statNew=get_LRT(res$theta,newDat, K=K, sd=sd, df=dfn)
         stats = rbind(stats, c(theta=res$theta, Tnew = statNew, Tobs=statObs, df=dfn) )
         
@@ -172,8 +172,8 @@ reginv_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5
 
 get_LRT = function(theta0, ages, K, sd, df)
 {
-  thetaMLE = reginv:::getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
-  ll0 = reginv:::cutt_LogLik(theta0,ages,sd=sd,K=K,df=df)
+  thetaMLE = getThetaMLE(ages=ages, theta=min(ages), sd=sd, K=K, df=df)
+  ll0 = cutt_LogLik(theta0,ages,sd=sd,K=K,df=df)
   LRstat = sign(theta0-thetaMLE$par) * sqrt( 2*(thetaMLE$value-ll0) )
 }
 
