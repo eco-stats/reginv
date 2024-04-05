@@ -52,7 +52,7 @@ boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
     LRs[b]  = get_LRTi(thMLE,ages=ageStar,K=K,sd=sd,df=dfOut, dfMin=dfMin)
   }
   # get sample quantiles of LRT
-  qLR = quantile(LRs, q, na.rm=TRUE)
+  qLR = -quantile(LRs, 1-q, na.rm=TRUE)
   
   dir="upX" #increasing function of theta
 
@@ -78,7 +78,7 @@ boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
     {
       thLim = try( uniroot(f=get_LRTi, interval=c(qLo[iQ],qHi[iQ]), ages=ages, K=K, sd=sd, df=dfOut, const=qLR[iQ], dfMin=dfMin, extendInt=dir) )
       if(inherits(thLim,"try-error"))
-          theta[iQ] = max(thMLE,K) # we only encounter errors for upper limit
+          theta[iQ] = max(thMLE,K) # assuming we only encounter errors for upper limit
       else
           theta[iQ] = thLim$root
     }
