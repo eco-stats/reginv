@@ -42,18 +42,20 @@ boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
   }
 
   # get LRs
-  LRs = rep(NA,iterMax)
   n = length(ages)
   thMLE = thetaMLE$par
   # resample iterMax times
-  for(b in 1:iterMax)
-  {
-    ageStar = rcutt(n,theta=thMLE,K=K,sd=sd,df=dfOut)
-    LRs[b]  = get_LRTi(thMLE,ages=ageStar,K=K,sd=sd,df=dfOut, dfMin=dfMin)
-  }
+#  LRs = rep(NA,iterMax)
+#  for(b in 1:iterMax)
+#  {
+#    ageStar = rcutt(n,theta=thMLE,K=K,sd=sd,df=dfOut)
+#    LRs[b]  = get_LRTi(thMLE,ages=ageStar,K=K,sd=sd,df=dfOut, dfMin=dfMin)
+#  }
   # get sample quantiles of LRT
-  qLR = -quantile(LRs, 1-q, na.rm=TRUE)
-  
+#  qLR = quantile(LRs, q, na.rm=TRUE)
+  thetaWorking = mle_cutt(ages=ages, sd=sd, K=K, df=df, q=q)
+  thetaWorking$theta = pmin(thetaWorking$theta,K) #don't let max go crazy
+    
   dir="upX" #increasing function of theta
 
   # set search limits so that we look above MLE if q>0.5 and below otherwise 
@@ -76,11 +78,25 @@ boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
       theta[iQ] = thMLE
     else
     {
-      thLim = try( uniroot(f=get_LRTi, interval=c(qLo[iQ],qHi[iQ]), ages=ages, K=K, sd=sd, df=dfOut, const=qLR[iQ], dfMin=dfMin, extendInt=dir) )
+      
+      # get estimates to use in simulation
+      dfWorking  = getDF( ages, theta=thetaWorking$theta[iQ], sd=sd, K=K, dfInvInit=1/dfOut, dfMin=dfMin )$par
+      
+      LRs = rep(NA,iterMax)
+      for(b in 1:iterMax)
+      {
+        ageStar = rcutt(n,theta=thetaWorking$theta[iQ],K=K,sd=sd,df=dfWorking)
+        LRs[b]  = get_LRTi(thetaWorking$theta[iQ],ages=ageStar,K=K,sd=sd,df=dfWorking, dfMin=dfMin)
+      }
+      # get sample quantiles of LRT
+      qLR = quantile(LRs, q[iQ], na.rm=TRUE)
+      thLim = try( uniroot(f=get_LRTi, interval=c(qLo[iQ],qHi[iQ]), ages=ages, K=K, sd=sd, df=dfWorking, const=qLR, dfMin=dfMin, extendInt=dir) )
+      
+#      thLim = try( uniroot(f=get_LRTi, interval=c(qLo[iQ],qHi[iQ]), ages=ages, K=K, sd=sd, df=dfWorking, const=qLR[iQ], dfMin=dfMin, extendInt=dir) )
       if(inherits(thLim,"try-error"))
-          theta[iQ] = max(thMLE,K) # assuming we only encounter errors for upper limit
+        theta[iQ] = thetaWorking$theta[iQ]
       else
-          theta[iQ] = thLim$root
+        theta[iQ] = thLim$root
     }
   }
   result = list(theta = theta, se=thetaMLE$se, df=dfOut, data = data.frame(ages=ages, sd=sd), method = "reginv", call = match.call() )

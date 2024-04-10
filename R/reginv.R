@@ -44,7 +44,7 @@
 
 #' @export
 #' @import stats
-#' @importFrom quantreg rq
+#' @importFrom quantreg rq rqss qss
 reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps=1.e-6, method="rq", a=0, stats = NULL, ...)
 {
   t_obs = getT(data, ...)
@@ -62,7 +62,7 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
   }
   
   # define getErr functions (to avoid repeated if statements in estimation)
-  if(method=="rq"||method=="wrq"||method=="rq2")
+  if(method=="rq"||method=="wrq"||method=="rq2"||method=="rqss")
   {
     getErr = function(newtheta,qfit,t_obs,q) # getting the SE of predictions 
     {
@@ -98,6 +98,7 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
   iter = dim(stats)[1]
   res = updateTheta(stats, t_obs, q, method=method)
   isConverged = FALSE
+  thin=10 ## trying less theta updates in case updater is slooooow 
   while(isConverged == FALSE & iter<iterMax)
   {
     iter=iter+1
@@ -112,7 +113,8 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
       Titer = getT(newDat, ...)
     }
     stats = rbind(stats, c(theta=thetaNew, T=Titer, thetaEst=res$theta) )
-    res = updateTheta(stats, t_obs, q, qfit=res$qfit, method=method)
+    if(iter%%thin==0) 
+      res = updateTheta(stats, t_obs, q, qfit=res$qfit, method=method)
     err = getErr(res$theta,res$qfit,t_obs,q) / abs(res$theta)
     isConverged = err < eps
   }
@@ -141,9 +143,11 @@ updateTheta = function(stats,t_obs,q,qfit=NULL,method="rq",screenStats=NULL)
                 "rq2" = quantreg::rq(T~poly(theta,2,raw=TRUE),tau=1-q,data=stats), #consider varying rq method, "fn" or "pfn"
                 #           "qgam" = qgam::qgam(T~s(theta), qu=q, data=stats),
                 "wrq" = quantreg::rq(T~theta,tau=1-q,weights=wt,data=stats),
+                "rqss" = quantreg::rqss(T~qss(theta,constraint="I"),tau=1-q,data=stats),
                 "lm" = lm(T~theta,data=stats),
                 glm(I(T>t_obs)~theta,family=binomial("probit"),data=stats)
     )
+    statsWorking=stats
   }
   else
   {
@@ -174,7 +178,13 @@ updateTheta = function(stats,t_obs,q,qfit=NULL,method="rq",screenStats=NULL)
     if(cond)
       theta = ( -coef(ft)[2] + sqrt(Delta) ) / 2 / coef(ft)[3]
   }
-  else
+  if(method=="rqss")
+  {
+    getSoln = function(theta,ft,t_obs){ predict(ft,newdata=list(theta=theta))-t_obs }
+    theta   = try(uniroot(getSoln,interval=range(statsWorking$theta),ft=ft,t_obs=t_obs,extendInt="upX")$root)
+    cond    = inherits(theta,"try-error") == FALSE
+  }
+  if(method %in% c("rq2","rqss")==FALSE)
   {
     # solve linear equation if increasing slope
     if(method=="prob") t_obs=qnorm(q) # if using probit regression

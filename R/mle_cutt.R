@@ -131,7 +131,7 @@ mle_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
           else
             thLim = try( uniroot(cutt_LRTprofile, c(qLo[iQ],qHi[iQ]), mles, alpha=q2Tail[iQ], ages=ages, sd=sd, K=K, dfMin=dfMin, extendInt=dir[iQ], ...) )
           if(inherits(thLim,"try-error"))
-            theta[iQ] = max(thetaMLE$par,K)
+            theta[iQ] = ifelse( q[iQ]>0.5, max(thetaMLE$par,K), min(thetaMLE$par,K) )
             #theta[iQ] = thetaMLE$par
           else
             theta[iQ] = thLim$root
