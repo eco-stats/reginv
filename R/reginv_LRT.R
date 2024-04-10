@@ -65,6 +65,7 @@ boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
   qLo[q<=0.5] = thMLE-searchLim
   qHi[q>=0.5] = min(thMLE,K)+searchLim
   
+  q2 = 1-2*pmin(q,1-q) #two-sided quantile
   # get results for each value of q
   for (iQ in 1:length(q))
   {
@@ -89,7 +90,8 @@ boot_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
         LRs[b]  = get_LRTi(thetaWorking$theta[iQ],ages=ageStar,K=K,sd=sd,df=dfWorking, dfMin=dfMin)
       }
       # get sample quantiles of LRT
-      qLR = quantile(LRs, q[iQ], na.rm=TRUE)
+#      qLR = quantile(LRs, q[iQ], na.rm=TRUE)
+      qLR = quantile(abs(LRs), q2[iQ], na.rm=TRUE)*sign(q[iQ]-0.5)
       thLim = try( uniroot(f=get_LRTi, interval=c(qLo[iQ],qHi[iQ]), ages=ages, K=K, sd=sd, df=dfWorking, const=qLR, dfMin=dfMin, extendInt=dir) )
       
 #      thLim = try( uniroot(f=get_LRTi, interval=c(qLo[iQ],qHi[iQ]), ages=ages, K=K, sd=sd, df=dfWorking, const=qLR[iQ], dfMin=dfMin, extendInt=dir) )
