@@ -1,7 +1,7 @@
 #' Confidence Interval for Extinction Time using regression inversion
 #'
 #' Estimates a confidence interval for extinction time using regression inversion, which finds a range of values for extinction time that
-#' are plausible considering the maximum likelihood estimator of the most recently observed fossil. This is done assuming fossil dates come from a
+#' are plausible considering the value of the maximum likelihood estimator. This is done assuming fossil dates come from a
 #' a compound uniform-truncated T distribution, which accounts for sampling error (the fact that the most recent fossil date is not necessarily
 #' the most recent time that the species was extant) and measurement error (error dating fossils).
 #' Usually takes a while to run (but less than a minute), because it is doing a lot of computation behind the scenes. 
