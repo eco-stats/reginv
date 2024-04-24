@@ -14,6 +14,7 @@
 #' @param a A scalar value determining where to simulate the next value of \code{theta} at, relative to our best current estimate of it. \code{a=0} (default) simulates the next statistic at our current best estimate of \code{theta},
 #' \code{a=1} simulates at the value the mean of all previous estimates equals our best estimate, intermediate values take a weighted mean of these two options. 
 #' @param stats A data frame of previous results to be read in to assist in calculations. Should be used with care. Data frame should contain the test statistics (labelled as \code{T}) and the values of \code{theta} at which data were simulated. 
+#' @param iterUpdate How many iterations should be run before theta is updated via quantile regression. Default (\code{iterUpdate=1}) updates every iteration.
 #' @param ... Further arguments passed through to \emph{both} the \code{getT} and \code{simulateData} functions. 
 #' @details 
 #' How well this works depends how well-chosen \code{getT} is (a maximum likelihood estimator, if available, is a great choice).
@@ -45,7 +46,7 @@
 #' @export
 #' @import stats
 #' @importFrom quantreg rq rqss qss
-reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps=1.e-6, method="rq", a=0, stats = NULL, ...)
+reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps=1.e-6, method="rq", a=0, stats = NULL, iterUpdate=1, ...)
 {
   t_obs = getT(data, ...)
   
@@ -98,7 +99,6 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
   iter = dim(stats)[1]
   res = updateTheta(stats, t_obs, q, method=method)
   isConverged = FALSE
-  thin=10 ## trying less theta updates in case updater is slooooow 
   while(isConverged == FALSE & iter<iterMax)
   {
     iter=iter+1
@@ -113,7 +113,7 @@ reginv = function(data, getT, simulateData, q=0.5, paramInits, iterMax=1000, eps
       Titer = getT(newDat, ...)
     }
     stats = rbind(stats, c(theta=thetaNew, T=Titer, thetaEst=res$theta) )
-    if(iter%%thin==0) 
+    if(iter%%iterUpdate==0) 
       res = updateTheta(stats, t_obs, q, qfit=res$qfit, method=method)
     err = getErr(res$theta,res$qfit,t_obs,q) / abs(res$theta)
     isConverged = err < eps

@@ -11,14 +11,18 @@ print.reginv <- function(x, ...) {
 print.est_cutt <- function(x, ...) {
   cat("\n Call: ")
   print(x$call)
-  if(is.null(x$q)==FALSE)
+  if(all(x$q==0.5))
+  {
+    cat("\n  theta:", x$theta[1],"\n")
+    meth="theta"
+  }
+  else
   {
     cat("\n   CI:\n")
     print(x$theta)
+    meth="CI"
   }
-  else
-    cat("\n  MLE:", x$theta[1],"\n")
-  cat(" CI estimated using", x$method, "method\n")
+  cat(" ",meth, "estimated using", x$method, "method\n")
 }
 
 #'@export

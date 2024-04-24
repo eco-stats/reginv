@@ -15,6 +15,7 @@ reginv(
   method = "rq",
   a = 0,
   stats = NULL,
+  iterUpdate = 1,
   ...
 )
 }
@@ -40,6 +41,8 @@ reginv(
 \code{a=1} simulates at the value the mean of all previous estimates equals our best estimate, intermediate values take a weighted mean of these two options.}
 
 \item{stats}{A data frame of previous results to be read in to assist in calculations. Should be used with care. Data frame should contain the test statistics (labelled as \code{T}) and the values of \code{theta} at which data were simulated.}
+
+\item{iterUpdate}{How many iterations should be run before theta is updated via quantile regression. Default (\code{iterUpdate=1}) updates every iteration.}
 
 \item{...}{Further arguments passed through to \emph{both} the \code{getT} and \code{simulateData} functions.}
 }

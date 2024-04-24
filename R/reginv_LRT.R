@@ -136,7 +136,16 @@ bootlrt_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0
 #    plot(lrs~ths)
 
     if(q[iQ]==0.5)
-      theta[iQ] = thMLE
+    {
+      betas = rep(NA,iterMax)
+      for(b in 1:iterMax)
+      {
+        ageStar = rcutt(n,theta=thetaWorking$theta[iQ],K=K,sd=sd,df=thetaWorking$df)
+        betas[b]  = mle_cutt(ages=ageStar, sd=sd, K=K, df=df, q=q[iQ])$theta[1]
+      }
+      biasEst = mean(betas,na.rm=TRUE) - thetaWorking$theta[iQ]
+      theta[iQ] = thetaWorking$theta[iQ] - biasEst
+    }
     else
     {
       
@@ -164,13 +173,12 @@ bootlrt_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0
         theta[iQ] = thLim$root
     }
   }
-  result = list(theta = theta, se=thetaMLE$se, df=dfOut, data = data.frame(ages=ages, sd=sd), method = "bootlrt", call = match.call() )
+  result = list(theta = theta, se=SE, df=dfOut, data = data.frame(ages=ages, sd=sd), q=q, method = "bootlrt", call = match.call() )
   class(result) = "est_cutt"
   return(result)
 }
 
 
-#' @export
 reginv_LRT = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), iterMax=1000, method="rq")
 {  
   
