@@ -18,6 +18,7 @@
 #' @param signroot logical, if set to \code{TRUE} (default) Will use a signed root likelihood ratio statistic, hence estimate asymmetric quantiles. If \code{FALSE} will use the likelihood ratio statistic, assuming symmetric quantiles.
 #' @param iterMax Maximum number of simulated datasets to use to estimate extinction time (default 1000).
 #' @param dfMin The minimum allowable value of the degrees of freedom, default=4.
+#' @param ncpus The number of cores used to do bootstrapping. Default \code{NULL} will use two less than the maximum available.
 #'
 #' @details 
 #' Given a vector of fossil ages \code{ages} and corresponding measurement error standard deviations \code{sd}, and an upper limit \code{K} for the possible age of a fossil
@@ -32,7 +33,8 @@
 #' the lower limit of the \code{100*(1-alpha)}\% confidence interval (solving at \code{q=alpha/2}), a point estimator for extinction time (solving at \code{q=0.5}), and an upper limit for the
 #' confidence interval (solving at \code{q=1-alpha/2}). If a vector \code{q} is specified as input then the function solves for this vector instead. 
 #' 
-#' Note that because we are using simulation to estimate parameters and their confidence intervals, we will get slightly different answers on each run. 
+#' Note that because we are using simulation to estimate parameters and their confidence intervals, we will get slightly different answers on each run. This code is fairly computationally intensive but to shorten compute times
+#' it makes use of multiple processors, as set using \code{ncpus}.
 #' 
 #' It is assumed that \code{ages} has been specified with smaller values representing more recent specimens, for example, \code{ages} could be specified in years before present.
 #' If there is interest in estimating speciation or invasion time, data would only need to be reordered so that smaller values represent older specimens (e.g. by multiplying by negative one).
@@ -51,14 +53,15 @@
 #' ages = rcutt(20, 10000, K=25000, sd=500) #simulating some random data
 #' 
 #' # for a point estimate together with a 95% CI (only 200 iterations used so it runs quickly)
-#' bootlrt_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=200) 
+#' bootlrt_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=200, ncpus=2) 
 #' 
 #' # compare to estimates using asymptotic likelihood inference, which tend to
 #' # be narrower and have poorer coverage (they miss the true value too often
 #' # when n or sd is small):
 #' mle_cutt(ages=ages, sd=500, K=25000, alpha=0.05) 
+#' @import parallel
 #' @export
-bootlrt_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), signroot=TRUE, iterMax=1000, dfMin=4)
+bootlrt_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), signroot=TRUE, iterMax=1000, dfMin=4, ncpus=NULL)
 {  
   # set up result list.
   theta = rep(NA,length(q))
@@ -100,6 +103,13 @@ bootlrt_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0
     }
   }
 
+  # decide number of cores to use
+  if(is.null(ncpus))
+  {
+    ncpus=max(1,parallel::detectCores()-2)
+    parl = ifelse(ncpus==1,"no","snow")
+  }
+  
   # get LRs
   n = length(ages)
   thMLE = thetaMLE$par
@@ -137,12 +147,24 @@ bootlrt_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0
 
     if(q[iQ]==0.5)
     {
-      betas = rep(NA,iterMax)
-      for(b in 1:iterMax)
-      {
-        ageStar = rcutt(n,theta=thetaWorking$theta[iQ],K=K,sd=sd,df=thetaWorking$df)
-        betas[b]  = mle_cutt(ages=ageStar, sd=sd, K=K, df=df, q=q[iQ])$theta[1]
-      }
+      #betas = rep(NA,iterMax)
+#      for(b in 1:iterMax)
+#      {
+#        ageStar = rcutt(n,theta=thetaWorking$theta[iQ],K=K,sd=sd,df=thetaWorking$df)
+#        betas[b]  = mle_cutt(ages=ageStar, sd=sd, K=K, df=df, q=q[iQ])$theta[1]
+#      }
+#      print(paste0("using parLapply with ",ncpus, " CPUs"))
+      
+      # set up for parallel computing
+      getBeta = function(data, sd, K, df, q) { mle_cutt(data, sd=sd, K=K, df=df, q=q)$theta[1] }
+      ageStar = matrix( rcutt(n*iterMax,theta=thetaWorking$theta[iQ],K=K,sd=sd,df=thetaWorking$df), ncol=iterMax )
+
+      # now go to town on columns of ageStar
+      cl=parallel::makeCluster(ncpus)
+      parallel::clusterExport(cl,c("getBeta","mle_cutt","sd","K","df","q","iQ"), envir=environment())
+      betas=parallel::parCapply(cl,ageStar,getBeta,sd=sd,K=K,df=df,q=q[iQ])
+      parallel::stopCluster(cl)
+
       biasEst = mean(betas,na.rm=TRUE) - thetaWorking$theta[iQ]
       theta[iQ] = thetaWorking$theta[iQ] - biasEst
     }
@@ -152,12 +174,24 @@ bootlrt_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0
       # get estimates to use in simulation
       dfWorking  = getDF( ages, theta=thetaWorking$theta[iQ], sd=sd, K=K, dfInvInit=1/dfOut, dfMin=dfMin )$par
       
-      LRs = rep(NA,iterMax)
-      for(b in 1:iterMax)
-      {
-        ageStar = rcutt(n,theta=thetaWorking$theta[iQ],K=K,sd=sd,df=dfWorking)
-        LRs[b]  = get_LRTi(thetaWorking$theta[iQ],ages=ageStar,K=K,sd=sd,df=dfWorking, dfMin=dfMin)
-      }
+#      LRs = rep(NA,iterMax)
+#      for(b in 1:iterMax)
+#      {
+#        ageStar = rcutt(n,theta=thetaWorking$theta[iQ],K=K,sd=sd,df=dfWorking)
+#        LRs[b]  = get_LRTi(thetaWorking$theta[iQ],ages=ageStar,K=K,sd=sd,df=dfWorking, dfMin=dfMin)
+#      }
+      # set up for parallel computing
+      ageStar = matrix( rcutt(n*iterMax,theta=thetaWorking$theta[iQ],K=K,sd=sd,df=dfWorking), ncol=iterMax )
+      getStat = function(ages,theta0,K,sd,df,dfMin){ get_LRTi(theta0=theta0,ages=ages,K=K,sd=sd,df=df,dfMin=dfMin) }
+      theta0  = thetaWorking$theta[iQ]
+
+      # now go to town on columns of ageStar
+      cl=parallel::makeCluster(ncpus)
+      parallel::clusterExport(cl,c("getStat","get_LRTi","theta0","sd","K","dfWorking","dfMin"), envir=environment())
+      LRs=parallel::parCapply(cl,ageStar,getStat,theta0=theta0,sd=sd,K=K,df=dfWorking,dfMin=dfMin)
+      parallel::stopCluster(cl)
+      
+      
       # get sample quantiles of LRT
 
       qLR = ifelse(signroot,

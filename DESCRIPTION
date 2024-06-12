@@ -1,7 +1,7 @@
 Package: reginv
 Type: Package
 Title: Regression Inversion for Parametric Inference
-Version: 1.6.6
+Version: 1.7.0
 Authors@R: c(
     person("David", "Warton", email = "david.warton@unsw.edu.au", role = c("cre", "aut")),
     person("Victor", "Tsang", email = "victorwctsang@gmail.com", role = c("aut")))
@@ -14,7 +14,8 @@ LazyData: true
 Imports:
     ecostats,
     stats,
-    quantreg
+    quantreg,
+    parallel
 RoxygenNote: 7.3.1
 Suggests: 
     testthat (>= 3.0.0),

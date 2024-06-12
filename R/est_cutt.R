@@ -23,6 +23,7 @@
 #' likelihood-based inference is used via \code{\link{mle_cutt}}. Another option is regression inversion (\code{\link{reginv_cutt}}) of the maximum likelihood estimator, but this usually gives wider intervals.
 #' @param paramInits (for \code{method="reginv"} only) A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 100 values evenly distributed within 5 SEs of the estimate from \code{\link{mle_cutt}}, only used by \code{link{reginv_cutt}}.
 #' @param iterMax (for \code{method="reginv"} only) Maximum number of simulated datasets to use to estimate extinction time (default 1000).
+#' @param ncpus Number of CPUs to use for computations (for \code{method="bootlrt"} only). Defaults to maximum allowable number minus two.
 #'
 #' @details 
 #' Given a vector of fossil ages \code{ages} and corresponding measurement error standard deviations \code{sd}, and an upper limit \code{K} for the possible age of a fossil
@@ -68,7 +69,7 @@
 #' ages = rcutt(20, 10000, K=25000, sd=1000) #simulating some random data
 #' 
 #' # for a point estimate together with a 95% CI (only 200 iterations used so it runs quickly)
-#' est_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=200) 
+#' est_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=200, ncpus=2) 
 #' 
 #' # compare to estimates using asymptotic likelihood inference, which tend to
 #' # be narrower and have poorer coverage when measurement error is small
@@ -77,10 +78,10 @@
 #' # Now repeat but with larger measurement error sd
 #' ages5 = rcutt(20, 10000, K=25000, sd=5000)
 #' 
-#' # note this will run faster because it will call method-for a point estimate together with a 95% CI
+#' # note this will run faster because it will use "mle" method
 #' est_cutt(ages=ages5, sd=5000, K=25000, alpha=0.05) 
 
-est_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), method=if(mean(sd)/(K-min(ages))<0.1) "bootlrt" else "mle", paramInits=NULL, iterMax=1000)
+est_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,hi=1-alpha/2), method=if(mean(sd)/(K-min(ages))<0.1) "bootlrt" else "mle", paramInits=NULL, iterMax=1000, ncpus=NULL)
 {  
 
   if(method=="reginv")
@@ -118,7 +119,7 @@ est_cutt = function(ages, sd, K, df=NULL, alpha=0.05, q=c(lo=alpha/2,point=0.5,h
     result=list(theta=theta,q=q)
     for(iQ in 1:length(q))
     {
-      ftI = bootlrt_cutt(ages,sd,K,df,q=q[iQ],iterMax=iterMax)
+      ftI = bootlrt_cutt(ages,sd,K,df,q=q[iQ],iterMax=iterMax,ncpus=ncpus)
       result$theta[iQ] = ftI$theta[1]
       result$df        = ftI$df[1]
     }

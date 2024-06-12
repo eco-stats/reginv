@@ -50,13 +50,13 @@ There are other arguments you can play with as well, consult the help file for d
 ```{r fit model}
 # if required, devtools::install_github("eco-stats/reginv")
 library(reginv)
-deerFt = est_cutt(deer, deerSds, K=14250) # takes maybe a minute to run
+deerFt = est_cutt(deer, deerSds, K=14250, ncpus=2) # takes maybe half a minute to run
 deerFt
 ```
 
 This returns a point estimate for extinction of `r format(deerFt$theta[2], scientific=FALSE)` BP, and by default, it also includes a 95% confidence interval for it, which in this case extends a couple of centuries either side of `r format(deerFt$theta[2], scientific=FALSE)` BP.
 
-This code takes a fair while to run (maybe a minute?) because it is doing a lot of work in the background. By default, unless measurement error is large, it uses a new method called _regression inversion_ (`method="reginv"`) which computes a maximum likelihood estimator under the CUTT model (see below), then repeatedly simulates new data at different potential extinction times in order to find a range that is plausible considering the estimators obtained from simulated data.
+This code takes a fair while to run (maybe half a minute?) because it is doing a lot of work in the background. By default, unless measurement error is large, it uses a _parametric bootstrap_ (`method="bootlrt"`) which computes a maximum likelihood estimator under the CUTT model (see below), then repeatedly simulates new data at different potential extinction times in order to find a range that is plausible considering the estimators obtained from simulated data. We used the argument `ncpus=2` so that the model fitted on two cores, you can usually leave this argument out of your code.
 
 A faster alternative method is to use inversion from the chi-squared distribution
 ```{r fit modelMLE}

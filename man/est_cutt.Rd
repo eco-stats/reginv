@@ -13,7 +13,8 @@ est_cutt(
   q = c(lo = alpha/2, point = 0.5, hi = 1 - alpha/2),
   method = if (mean(sd)/(K - min(ages)) < 0.1) "bootlrt" else "mle",
   paramInits = NULL,
-  iterMax = 1000
+  iterMax = 1000,
+  ncpus = NULL
 )
 }
 \arguments{
@@ -39,6 +40,8 @@ likelihood-based inference is used via \code{\link{mle_cutt}}. Another option is
 \item{paramInits}{(for \code{method="reginv"} only) A numeric vector of initial values for extinction time to use in simulation. If \code{NULL} then these will be 100 values evenly distributed within 5 SEs of the estimate from \code{\link{mle_cutt}}, only used by \code{link{reginv_cutt}}.}
 
 \item{iterMax}{(for \code{method="reginv"} only) Maximum number of simulated datasets to use to estimate extinction time (default 1000).}
+
+\item{ncpus}{Number of CPUs to use for computations (for \code{method="bootlrt"} only). Defaults to maximum allowable number minus two.}
 }
 \value{
 This function returns an object of class "reginv" or "est_cutt" with the following components:
@@ -93,7 +96,7 @@ If there is interest in estimating speciation or invasion time, data would only 
 ages = rcutt(20, 10000, K=25000, sd=1000) #simulating some random data
 
 # for a point estimate together with a 95\% CI (only 200 iterations used so it runs quickly)
-est_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=200) 
+est_cutt(ages=ages, sd=500, K=25000, alpha=0.05, iterMax=200, ncpus=2) 
 
 # compare to estimates using asymptotic likelihood inference, which tend to
 # be narrower and have poorer coverage when measurement error is small
@@ -102,7 +105,7 @@ est_cutt(ages=ages, sd=500, K=25000, alpha=0.05, method="mle")
 # Now repeat but with larger measurement error sd
 ages5 = rcutt(20, 10000, K=25000, sd=5000)
 
-# note this will run faster because it will call method-for a point estimate together with a 95\% CI
+# note this will run faster because it will use "mle" method
 est_cutt(ages=ages5, sd=5000, K=25000, alpha=0.05) 
 }
 \seealso{
